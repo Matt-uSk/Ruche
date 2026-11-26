@@ -133,4 +133,39 @@ enum Scripts {
       return best || (location.origin + "/favicon.ico");
     })();
     """#
+
+    /// Diagnostic du glisser-déposer (activé par `defaults write ch.mattusk.ruche dropDebug -bool true`) :
+    /// affiche ce que la page reçoit à chaque étape.
+    static func dropDebug(nativeDrop: Bool) -> String {
+        """
+        (function () {
+          const box = document.createElement("pre");
+          box.style.cssText = "position:fixed;top:4px;left:4px;z-index:2147483647;max-width:60vw;max-height:40vh;" +
+            "overflow:auto;margin:0;padding:6px 8px;background:rgba(0,0,0,.85);color:#7CFC00;" +
+            "font:11px/1.35 Menlo,monospace;border-radius:6px;pointer-events:none;white-space:pre-wrap";
+          box.textContent = "Ruche dropDebug — réglage WebKit items : \(nativeDrop ? "activé" : "indisponible")";
+          const show = () => { if (!box.isConnected) document.documentElement.appendChild(box); };
+          const describe = (t, e) => {
+            const dt = e.dataTransfer;
+            let items = "n/a";
+            try { items = dt && dt.items ? Array.from(dt.items).map(i => i.kind + ":" + (i.type || "?")).join(",") || "0" : "absent"; } catch (x) { items = "erreur"; }
+            return t + (e.isTrusted ? "" : " (simulé)") +
+              " | types=[" + (dt ? Array.from(dt.types || []).join(",") : "pas de dataTransfer") + "]" +
+              " | items=" + items +
+              " | files=" + (dt && dt.files ? dt.files.length : "absent") +
+              " | effectAllowed=" + (dt ? dt.effectAllowed : "-") +
+              " | annulé par la page=" + e.defaultPrevented +
+              " | cible=" + (e.target && e.target.tagName ? e.target.tagName.toLowerCase() + (e.target.className && typeof e.target.className === "string" ? "." + e.target.className.split(" ")[0] : "") : "?");
+          };
+          let lastOver = 0;
+          for (const t of ["dragenter", "dragover", "dragleave", "drop"]) {
+            window.addEventListener(t, (e) => {
+              if (t === "dragover") { const now = Date.now(); if (now - lastOver < 500) return; lastOver = now; }
+              setTimeout(() => { show(); box.textContent = describe(t, e) + "\\n" + box.textContent.slice(0, 3000); }, 0);
+            }, true);
+          }
+          show();
+        })();
+        """
+    }
 }

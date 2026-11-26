@@ -245,6 +245,7 @@ extension Scripts {
         },
         // Barres de défilement fines, grises et translucides (lisibles en clair comme en sombre).
         darkScrollbarsCSS:
+          ":root { color-scheme: light dark; }" +
           "*::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }" +
           "*::-webkit-scrollbar-track { background: transparent; }" +
           "*::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.45); border-radius: 4px; }" +
