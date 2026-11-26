@@ -3,10 +3,12 @@ name: Release
 # Compile l'app universelle et publie une release :
 #  - à chaque tag vX.Y.Z poussé,
 #  - ou à la main : onglet Actions › Release › Run workflow (la version est lue dans Info.plist
-#    si le champ est laissé vide ; le tag vX.Y.Z est créé par la release).
+#    si le champ est laissé vide ; le tag vX.Y.Z est créé par la release),
+#  - ou par un commit sur main dont le message contient [release] (version lue dans Info.plist).
 on:
   push:
     tags: ["v*"]
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -18,6 +20,7 @@ permissions:
 
 jobs:
   release:
+    if: github.event_name != 'push' || github.ref_type == 'tag' || contains(github.event.head_commit.message, '[release]')
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
