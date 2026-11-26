@@ -12,6 +12,21 @@ final class WebHostView: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) non utilisé") }
 
+    /// Vrai une fois le conteneur dans une fenêtre, avec une taille réelle.
+    private(set) var isReady = false
+    /// Appelé une seule fois, au moment où le conteneur devient prêt.
+    var onReady: (() -> Void)?
+
+    override func layout() {
+        super.layout()
+        guard !isReady, window != nil, bounds.width > 1, bounds.height > 1 else { return }
+        isReady = true
+        let callback = onReady
+        onReady = nil
+        // Au tour suivant : on ne crée pas de sous-vues en plein calcul de mise en page.
+        DispatchQueue.main.async { callback?() }
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard window != nil else { return }

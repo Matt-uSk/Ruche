@@ -62,6 +62,7 @@ final class AppModel: NSObject, ObservableObject {
     private var lastActive: [UUID: Date] = [:]
     private var timer: Timer?
     private var started = false
+    private var initialLoadDone = false
 
     private let supportDir: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -98,10 +99,23 @@ final class AppModel: NSObject, ObservableObject {
             selectedID = services.first?.id
         }
         // Au lancement, on ne charge que le service affiché et ceux marqués « toujours actif ».
-        for s in services where s.keepAwake || s.id == selectedID {
-            ensureController(s.id)
+        // On attend que le conteneur soit réellement dans la fenêtre : une vue web créée avant
+        // ne reçoit pas les glisser-déposer de fichiers.
+        let loadInitial: () -> Void = { [weak self] in
+            guard let self, !self.initialLoadDone else { return }
+            self.initialLoadDone = true
+            for s in self.services where s.keepAwake || s.id == self.selectedID {
+                self.ensureController(s.id)
+            }
+            self.updateVisibility()
         }
-        updateVisibility()
+        if hostView.isReady {
+            loadInitial()
+        } else {
+            hostView.onReady = loadInitial
+            // Filet de sécurité (démarrage masqué, fenêtre jamais affichée) : on charge quand même.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { loadInitial() }
+        }
 
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
