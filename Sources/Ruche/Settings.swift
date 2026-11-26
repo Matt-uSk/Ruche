@@ -225,6 +225,8 @@ struct SettingsView: View {
                 .tabItem { Label("Sécurité", systemImage: "touchid") }
             AdvancedSettings()
                 .tabItem { Label("Avancé", systemImage: "wrench.and.screwdriver") }
+            AboutSettings()
+                .tabItem { Label("À propos", systemImage: "info.circle") }
         }
         .environmentObject(model)
     }
@@ -277,7 +279,6 @@ struct GeneralSettings: View {
             Section("Barre des menus") {
                 Toggle("Afficher l'icône avec le total des non-lus", isOn: $showMenuBar)
             }
-            UpdatesSettingsSection(updater: Updater.shared)
             Section("Veille des services") {
                 Picker("Mettre en veille les services inactifs", selection: $minutes) {
                     Text("Jamais").tag(0)
@@ -505,6 +506,57 @@ struct ServicesSettings: View {
         .onAppear {
             if model.settingsSelection == nil, !model.settingsAdding, let first = model.services.first {
                 model.selectInSettings(first.id)
+            }
+        }
+    }
+}
+
+
+// MARK: - À propos
+
+struct AboutSettings: View {
+    var body: some View {
+        SettingsPage {
+            Section {
+                HStack(spacing: 16) {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .frame(width: 72, height: 72)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Ruche").font(.title2.weight(.semibold))
+                        Text("Version \(Updater.shared.currentVersion ?? "développement")")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                        Text("Tes messageries et boîtes mail web dans une fenêtre macOS native, sans Chromium.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            UpdatesSettingsSection(updater: Updater.shared)
+
+            Section("Crédits") {
+                Caption("Inspiré de Ferdium (disposition, recettes, mise en veille) — réécriture native en Swift, sans code de l'application Ferdium.")
+                Link("Ferdium", destination: URL(string: "https://github.com/ferdium/ferdium-app")!)
+                Caption("Les recettes intégrées WhatsApp et Infomaniak Mail sont adaptées des recettes Ferdium (licence MIT, © Ferdium Contributors).")
+                Link("Recettes Ferdium", destination: URL(string: "https://github.com/ferdium/ferdium-recipes")!)
+                Caption("La majorité du code a été écrite par Claude (Anthropic).")
+            }
+
+            Section("Liens") {
+                Link("Code source sur GitHub", destination: URL(string: "https://github.com/Matt-uSk/Ruche")!)
+                Link("Signaler un problème", destination: URL(string: "https://github.com/Matt-uSk/Ruche/issues")!)
+                Link("Licence MIT", destination: URL(string: "https://github.com/Matt-uSk/Ruche/blob/main/LICENSE")!)
+            }
+
+            Section("Soutien") {
+                Caption("Ruche est gratuite et open source. Si elle sauve ta batterie, tu peux m'offrir un café ☕")
+                Link(destination: URL(string: "https://ko-fi.com/mattusk")!) {
+                    Label("Soutenir sur Ko-fi", systemImage: "cup.and.saucer.fill")
+                }
             }
         }
     }
