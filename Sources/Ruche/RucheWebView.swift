@@ -46,7 +46,7 @@ final class RucheWebView: WKWebView {
     private var debugEnabled: Bool { UserDefaults.standard.bool(forKey: "dropDebug") }
     private var lastLoggedUpdate: UInt?
 
-    private func debugLog(_ text: String) {
+    fileprivate func debugLog(_ text: String) {
         guard debugEnabled,
               let data = try? JSONSerialization.data(withJSONObject: [text]),
               let json = String(data: data, encoding: .utf8) else { return }
@@ -58,35 +58,41 @@ final class RucheWebView: WKWebView {
         return "fichiers=\(fileURLs(sender).count) | masque source=\(sender.draggingSourceOperationMask.rawValue) | presse-papiers=[\(types.prefix(300))]"
     }
 
-    // MARK: Enregistrement du glisser-déposer
+    // MARK: Cible de glisser-déposer
 
-    /// Les services chargés au lancement sont créés avant que la fenêtre existe (et masqués) :
-    /// leur enregistrement comme destination de glisser-déposer ne prenait pas. On le refait
-    /// à chaque entrée dans une fenêtre et à chaque affichage.
-    private func refreshDragRegistration() {
-        guard window != nil else { return }
-        var types = registeredDraggedTypes
-        for t: NSPasteboard.PasteboardType in [.fileURL, .URL, .string, .html, .rtf, .tiff, .png, .pdf]
-        where !types.contains(t) {
-            types.append(t)
+    /// Toutes les pages des services sont empilées au même endroit, une seule étant affichée.
+    /// AppKit peut remettre un glisser à une page masquée située au-dessus dans la pile :
+    /// la page affichée ne voyait alors rien. Deux protections :
+    ///  1. seule la page affichée reste enregistrée comme cible (setDropTarget) ;
+    ///  2. si une page masquée reçoit quand même un glisser, elle le transmet à la page affichée.
+    private var savedDragTypes: [NSPasteboard.PasteboardType]?
+
+    func setDropTarget(_ enabled: Bool) {
+        if savedDragTypes == nil {
+            var types = registeredDraggedTypes
+            for t: NSPasteboard.PasteboardType in [.fileURL, .URL, .string, .html, .rtf, .tiff, .png, .pdf]
+            where !types.contains(t) {
+                types.append(t)
+            }
+            savedDragTypes = types
         }
         unregisterDraggedTypes()
-        registerForDraggedTypes(types)
+        if enabled, let types = savedDragTypes { registerForDraggedTypes(types) }
     }
 
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        refreshDragRegistration()
-    }
-
-    override func viewDidUnhide() {
-        super.viewDidUnhide()
-        refreshDragRegistration()
+    /// Page affichée à qui transmettre le glisser, si celle-ci est masquée.
+    private var visibleSibling: RucheWebView? {
+        guard isHidden else { return nil }
+        return superview?.subviews.compactMap { $0 as? RucheWebView }.first { !$0.isHidden && $0 !== self }
     }
 
     // MARK: NSDraggingDestination
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if let other = visibleSibling {
+            other.debugLog("AppKit : glisser remis à une page MASQUÉE (\(url?.host ?? "?")) → transmis à la page affichée")
+            return other.draggingEntered(sender)
+        }
         lastLoggedUpdate = nil
         if usesSyntheticDrop(sender) {
             debugLog("AppKit draggingEntered → simulé | " + describe(sender))
@@ -98,6 +104,7 @@ final class RucheWebView: WKWebView {
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if let other = visibleSibling { return other.draggingUpdated(sender) }
         if usesSyntheticDrop(sender) { return .copy }
         let op = super.draggingUpdated(sender)
         if lastLoggedUpdate != op.rawValue {
@@ -108,12 +115,14 @@ final class RucheWebView: WKWebView {
     }
 
     override func draggingExited(_ sender: NSDraggingInfo?) {
+        if let other = visibleSibling { other.draggingExited(sender); return }
         debugLog("AppKit draggingExited")
         if let sender, usesSyntheticDrop(sender) { return }
         super.draggingExited(sender)
     }
 
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if let other = visibleSibling { return other.prepareForDragOperation(sender) }
         if usesSyntheticDrop(sender) { return true }
         let ok = super.prepareForDragOperation(sender)
         debugLog("AppKit prepareForDragOperation → \(ok)")
@@ -121,6 +130,7 @@ final class RucheWebView: WKWebView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if let other = visibleSibling { return other.performDragOperation(sender) }
         guard usesSyntheticDrop(sender) else {
             let ok = super.performDragOperation(sender)
             debugLog("AppKit performDragOperation → \(ok)")
@@ -134,6 +144,7 @@ final class RucheWebView: WKWebView {
     }
 
     override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        if let other = visibleSibling { other.concludeDragOperation(sender); return }
         if let sender, usesSyntheticDrop(sender) { return }
         super.concludeDragOperation(sender)
     }

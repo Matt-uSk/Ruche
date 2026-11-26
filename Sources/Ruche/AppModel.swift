@@ -62,10 +62,6 @@ final class AppModel: NSObject, ObservableObject {
     private var lastActive: [UUID: Date] = [:]
     private var timer: Timer?
     private var started = false
-    private var initialLoadDone = false
-    /// Services créés masqués (« toujours actifs » au lancement, réveils périodiques) : WebKit ne les
-    /// enregistre pas comme cibles de glisser-déposer. On les recrée une fois, au premier affichage.
-    private var createdHidden: Set<UUID> = []
 
     private let supportDir: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -102,23 +98,10 @@ final class AppModel: NSObject, ObservableObject {
             selectedID = services.first?.id
         }
         // Au lancement, on ne charge que le service affiché et ceux marqués « toujours actif ».
-        // On attend que le conteneur soit réellement dans la fenêtre : une vue web créée avant
-        // ne reçoit pas les glisser-déposer de fichiers.
-        let loadInitial: () -> Void = { [weak self] in
-            guard let self, !self.initialLoadDone else { return }
-            self.initialLoadDone = true
-            for s in self.services where s.keepAwake || s.id == self.selectedID {
-                self.ensureController(s.id)
-            }
-            self.updateVisibility()
+        for s in services where s.keepAwake || s.id == selectedID {
+            ensureController(s.id)
         }
-        if hostView.isReady {
-            loadInitial()
-        } else {
-            hostView.onReady = loadInitial
-            // Filet de sécurité (démarrage masqué, fenêtre jamais affichée) : on charge quand même.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { loadInitial() }
-        }
+        updateVisibility()
 
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -175,8 +158,8 @@ final class AppModel: NSObject, ObservableObject {
         c.webView.frame = hostView.bounds
         c.webView.autoresizingMask = [.width, .height]
         c.webView.isHidden = id != selectedID
-        if id != selectedID { createdHidden.insert(id) }
         hostView.addSubview(c.webView)
+        (c.webView as? RucheWebView)?.setDropTarget(id == selectedID)
         controllers[id] = c
         live.insert(id)
         lastActive[id] = Date()
@@ -184,7 +167,12 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     private func updateVisibility() {
-        for (id, c) in controllers { c.webView.isHidden = id != selectedID }
+        for (id, c) in controllers {
+            c.webView.isHidden = id != selectedID
+            // Seule la page affichée doit recevoir les glisser-déposer : une page masquée
+            // placée au-dessus dans la pile des vues les interceptait à sa place.
+            (c.webView as? RucheWebView)?.setDropTarget(id == selectedID)
+        }
         if let id = selectedID, let wv = controllers[id]?.webView {
             wv.window?.makeFirstResponder(wv)
         }
@@ -197,10 +185,6 @@ final class AppModel: NSObject, ObservableObject {
         selectedID = id
         lastActive[id] = Date()
         UserDefaults.standard.set(id.uuidString, forKey: "selectedID")
-        if createdHidden.remove(id) != nil, controllers[id] != nil {
-            // Recréation (comme une mise en veille suivie d'un réveil) : la session est conservée.
-            hibernate(id)
-        }
         ensureController(id)
         updateVisibility()
     }
@@ -212,7 +196,6 @@ final class AppModel: NSObject, ObservableObject {
 
     func hibernate(_ id: UUID) {
         guard let c = controllers.removeValue(forKey: id) else { return }
-        createdHidden.remove(id)
         c.tearDown()
         // Gmail : on mémorise tout de suite les mails présents, pour que chaque mail arrivé
         // pendant la veille déclenche une notification (sans doublon avec ceux déjà vus).
