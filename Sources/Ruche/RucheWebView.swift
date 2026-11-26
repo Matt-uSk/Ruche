@@ -58,6 +58,32 @@ final class RucheWebView: WKWebView {
         return "fichiers=\(fileURLs(sender).count) | masque source=\(sender.draggingSourceOperationMask.rawValue) | presse-papiers=[\(types.prefix(300))]"
     }
 
+    // MARK: Enregistrement du glisser-déposer
+
+    /// Les services chargés au lancement sont créés avant que la fenêtre existe (et masqués) :
+    /// leur enregistrement comme destination de glisser-déposer ne prenait pas. On le refait
+    /// à chaque entrée dans une fenêtre et à chaque affichage.
+    private func refreshDragRegistration() {
+        guard window != nil else { return }
+        var types = registeredDraggedTypes
+        for t: NSPasteboard.PasteboardType in [.fileURL, .URL, .string, .html, .rtf, .tiff, .png, .pdf]
+        where !types.contains(t) {
+            types.append(t)
+        }
+        unregisterDraggedTypes()
+        registerForDraggedTypes(types)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        refreshDragRegistration()
+    }
+
+    override func viewDidUnhide() {
+        super.viewDidUnhide()
+        refreshDragRegistration()
+    }
+
     // MARK: NSDraggingDestination
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {

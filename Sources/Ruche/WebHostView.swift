@@ -12,6 +12,13 @@ final class WebHostView: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) non utilisé") }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil else { return }
+        unregisterDraggedTypes()
+        registerForDraggedTypes([.fileURL, .URL, .string, .tiff, .png, .html, .rtf, .pdf])
+    }
+
     /// Vue web actuellement visible.
     private var target: WKWebView? {
         subviews.reversed().compactMap { $0 as? WKWebView }.first { !$0.isHidden }
