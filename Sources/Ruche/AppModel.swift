@@ -62,6 +62,10 @@ final class AppModel: NSObject, ObservableObject {
     private var lastActive: [UUID: Date] = [:]
     private var timer: Timer?
     private var started = false
+    /// Pages créées masquées : macOS ne les prend pas comme cibles de glisser-déposer, même une fois
+    /// affichées. Au premier affichage, on les retire puis on les remet dans la fenêtre
+    /// (sans recharger la page), ce qui refait leur enregistrement.
+    private var needsDropRefresh: Set<UUID> = []
 
     private let supportDir: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -160,6 +164,7 @@ final class AppModel: NSObject, ObservableObject {
         c.webView.frame = hostView.bounds
         c.webView.autoresizingMask = [.width, .height]
         c.webView.isHidden = id != selectedID
+        if id != selectedID { needsDropRefresh.insert(id) }
         hostView.addSubview(c.webView)
         (c.webView as? RucheWebView)?.setDropTarget(id == selectedID)
         controllers[id] = c
@@ -191,6 +196,26 @@ final class AppModel: NSObject, ObservableObject {
         UserDefaults.standard.set(id.uuidString, forKey: "selectedID")
         ensureController(id)
         updateVisibility()
+        DropLog.dumpStack(of: hostView, reason: "après sélection")
+        if needsDropRefresh.remove(id) != nil { reinsertWebView(id) }
+    }
+
+    /// Retire la page de la fenêtre puis la remet au tour suivant, visible et au-dessus de la pile.
+    /// La page n'est pas rechargée ; au pire, un bref clignotement la première fois.
+    private func reinsertWebView(_ id: UUID) {
+        guard let webView = controllers[id]?.webView else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.controllers[id]?.webView === webView else { return }
+            webView.removeFromSuperview()
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.controllers[id]?.webView === webView else { return }
+                webView.frame = self.hostView.bounds
+                webView.isHidden = id != self.selectedID
+                self.hostView.addSubview(webView)
+                self.updateVisibility()
+                DropLog.dumpStack(of: self.hostView, reason: "après réinsertion de \(self.service(id)?.name ?? "?")")
+            }
+        }
     }
 
     func selectIndex(_ index: Int) {
@@ -201,6 +226,7 @@ final class AppModel: NSObject, ObservableObject {
     func hibernate(_ id: UUID) {
         guard let c = controllers.removeValue(forKey: id) else { return }
         DropLog.write("MISE EN VEILLE \(service(id)?.name ?? "?")")
+        needsDropRefresh.remove(id)
         c.tearDown()
         // Gmail : on mémorise tout de suite les mails présents, pour que chaque mail arrivé
         // pendant la veille déclenche une notification (sans doublon avec ceux déjà vus).
