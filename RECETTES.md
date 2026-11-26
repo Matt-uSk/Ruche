@@ -25,7 +25,8 @@ Une recette perso avec le même `id` qu'une recette intégrée la remplace.
   "iconDomain": "exemple.com",
   "iconURL": null,
   "author": "Ton nom",
-  "version": "1.0"
+  "version": "1.0",
+  "category": "messaging"
 }
 ```
 
@@ -36,6 +37,7 @@ Une recette perso avec le même `id` qu'une recette intégrée la remplace.
 | `matchHosts` | hôtes où la recette s'applique (sous-domaines inclus) — un service existant utilise la recette dont l'hôte correspond à son URL |
 | `keepAwake` | coche « Toujours actif » par défaut à l'ajout |
 | `iconDomain` / `iconURL` | icône de la grille (domaine pour le service d'icônes, ou URL directe) |
+| `category` | rubrique de la grille d'ajout : `messaging`, `social`, `mail`, `productivity`, `other` (ou un texte libre, affiché tel quel) |
 
 ## recipe.js
 

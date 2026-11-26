@@ -35,6 +35,8 @@ final class AppModel: NSObject, ObservableObject {
     @Published var draftIcon: NSImage?
     var draftIconData: Data?
     @Published var draftIconReset = false
+    /// Recherche dans la grille d'ajout de service.
+    @Published var presetSearch = ""
     /// Recettes disponibles (intégrées + perso).
     @Published private(set) var recipes: [Recipe] = []
     /// Réveils périodiques en cours : fin prévue et compteur avant le réveil, par service.
@@ -296,6 +298,7 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     func beginSettingsAdd() {
+        presetSearch = ""
         settingsSelection = nil
         draft = Service(name: "", url: "https://")
         resetDraftIcon()
@@ -328,6 +331,7 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     func beginAdd() {
+        presetSearch = ""
         draft = Service(name: "", url: "https://")
         resetDraftIcon()
         showAddSheet = true

@@ -2,44 +2,106 @@ import SwiftUI
 
 // MARK: - Modèles de services (grille d'icônes)
 
+struct RecipeGroup: Identifiable {
+    let id: String
+    let recipes: [Recipe]
+}
+
 struct PresetGrid: View {
     @EnvironmentObject var model: AppModel
     var columns = 4
 
+    /// Recettes filtrées par la recherche, regroupées par catégorie (ordre des catégories connues, puis les autres).
+    private var groups: [RecipeGroup] {
+        let query = model.presetSearch.trimmingCharacters(in: .whitespaces)
+        let filtered = model.recipes.filter { r in
+            query.isEmpty
+                || r.name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+                || r.url.range(of: query, options: [.caseInsensitive]) != nil
+                || RecipeLibrary.label(forCategory: r.category)
+                    .range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+        var order = RecipeLibrary.categories.map(\.id)
+        for r in filtered where !order.contains(r.category) { order.append(r.category) }
+        return order.compactMap { cat in
+            let items = filtered.filter { $0.category == cat }
+            return items.isEmpty ? nil : RecipeGroup(id: cat, recipes: items)
+        }
+    }
+
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columns), spacing: 8) {
-            ForEach(model.recipes) { preset in
-                Button {
-                    model.draft.name = preset.name
-                    model.draft.url = preset.url
-                    model.draft.keepAwake = preset.keepAwake
-                } label: {
-                    VStack(spacing: 6) {
-                        AsyncImage(url: preset.iconURL) { phase in
-                            if let image = phase.image {
-                                image.resizable().interpolation(.high).aspectRatio(contentMode: .fit)
-                            } else {
-                                Placeholder(name: preset.name)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Rechercher un service", text: $model.presetSearch)
+                    .textFieldStyle(.plain)
+                if !model.presetSearch.isEmpty {
+                    Button { model.presetSearch = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.06)))
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    let groups = self.groups
+                    if groups.isEmpty {
+                        Text("Aucun service ne correspond. Tu peux en ajouter un à la main avec le formulaire ci-dessous.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    ForEach(groups) { group in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(RecipeLibrary.label(forCategory: group.id))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columns),
+                                      spacing: 8) {
+                                ForEach(group.recipes) { preset in tile(preset) }
                             }
                         }
-                        .frame(width: 32, height: 32)
-                        // Certaines icônes ont un fond blanc carré : coins arrondis pour toutes.
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        Text(preset.name)
-                            .font(.caption)
-                            .lineLimit(1)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 10)
-                        .fill(model.draft.url == preset.url ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.05)))
-                    .overlay(RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(model.draft.url == preset.url ? Color.accentColor.opacity(0.6) : Color.clear, lineWidth: 1))
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
             }
+            .frame(maxHeight: 300)
         }
+    }
+
+    private func tile(_ preset: Recipe) -> some View {
+        Button {
+            model.draft.name = preset.name
+            model.draft.url = preset.url
+            model.draft.keepAwake = preset.keepAwake
+        } label: {
+            VStack(spacing: 6) {
+                AsyncImage(url: preset.iconURL) { phase in
+                    if let image = phase.image {
+                        image.resizable().interpolation(.high).aspectRatio(contentMode: .fit)
+                    } else {
+                        Placeholder(name: preset.name)
+                    }
+                }
+                .frame(width: 32, height: 32)
+                // Certaines icônes ont un fond blanc carré : coins arrondis pour toutes.
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                Text(preset.name)
+                    .font(.caption)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: 10)
+                .fill(model.draft.url == preset.url ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(model.draft.url == preset.url ? Color.accentColor.opacity(0.6) : Color.clear, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

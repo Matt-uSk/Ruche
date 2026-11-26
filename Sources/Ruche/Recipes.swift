@@ -18,6 +18,8 @@ struct RecipeManifest: Codable {
     var iconURL: String?
     var author: String?
     var version: String?
+    /// Catégorie dans la grille d'ajout : messaging, social, mail, productivity, other (ou texte libre).
+    var category: String?
 }
 
 struct Recipe: Identifiable {
@@ -30,6 +32,7 @@ struct Recipe: Identifiable {
     var name: String { manifest.name }
     var url: String { manifest.url }
     var keepAwake: Bool { manifest.keepAwake ?? false }
+    var category: String { manifest.category ?? "other" }
 
     /// Icône 64 px pour la grille d'ajout.
     var iconURL: URL? {
@@ -93,7 +96,8 @@ enum RecipeLibrary {
           "keepAwake": false,
           "iconDomain": "exemple.com",
           "author": "Ton nom",
-          "version": "1.0"
+          "version": "1.0",
+          "category": "other"
         }
         """
         let script = """
@@ -116,27 +120,41 @@ enum RecipeLibrary {
     // Les scripts WhatsApp et Infomaniak sont adaptés des recettes Ferdium
     // (https://github.com/ferdium/ferdium-recipes, licence MIT, © Ferdium Contributors).
 
-    private static func make(_ id: String, _ name: String, _ url: String, hosts: [String],
+    private static func make(_ id: String, _ name: String, _ url: String, hosts: [String], category: String,
                              keepAwake: Bool = false, iconDomain: String? = nil, iconURL: String? = nil,
                              script: String? = nil) -> Recipe {
         Recipe(manifest: RecipeManifest(id: id, name: name, url: url, matchHosts: hosts, keepAwake: keepAwake,
-                                        iconDomain: iconDomain, iconURL: iconURL, author: "Ruche", version: "1.0"),
+                                        iconDomain: iconDomain, iconURL: iconURL, author: "Ruche", version: "1.0",
+                                        category: category),
                script: script, isBuiltIn: true)
     }
 
+    /// Catégories connues, dans l'ordre d'affichage, avec leur libellé.
+    static let categories: [(id: String, label: String)] = [
+        ("messaging", "Messageries"),
+        ("social", "Réseaux sociaux"),
+        ("mail", "Mail"),
+        ("productivity", "Productivité"),
+        ("other", "Autres"),
+    ]
+
+    static func label(forCategory id: String) -> String {
+        categories.first { $0.id == id }?.label ?? id
+    }
+
     static let builtIn: [Recipe] = [
-        make("whatsapp", "WhatsApp", "https://web.whatsapp.com", hosts: ["web.whatsapp.com"],
+        make("whatsapp", "WhatsApp", "https://web.whatsapp.com", hosts: ["web.whatsapp.com"], category: "messaging",
              keepAwake: true, iconDomain: "whatsapp.com", script: whatsAppScript),
-        make("messenger", "Messenger", "https://www.messenger.com", hosts: ["messenger.com"], keepAwake: true),
-        make("discord", "Discord", "https://discord.com/app", hosts: ["discord.com"]),
-        make("gmail", "Gmail", "https://mail.google.com", hosts: ["mail.google.com"],
+        make("messenger", "Messenger", "https://www.messenger.com", hosts: ["messenger.com"], category: "messaging", keepAwake: true),
+        make("discord", "Discord", "https://discord.com/app", hosts: ["discord.com"], category: "messaging"),
+        make("gmail", "Gmail", "https://mail.google.com", hosts: ["mail.google.com"], category: "mail",
              iconURL: "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico"),
-        make("trello", "Trello", "https://trello.com", hosts: ["trello.com"]),
-        make("telegram", "Telegram", "https://web.telegram.org", hosts: ["web.telegram.org"],
+        make("trello", "Trello", "https://trello.com", hosts: ["trello.com"], category: "productivity"),
+        make("telegram", "Telegram", "https://web.telegram.org", hosts: ["web.telegram.org"], category: "messaging",
              keepAwake: true, iconDomain: "telegram.org"),
-        make("outlook", "Outlook", "https://outlook.live.com/mail", hosts: ["outlook.live.com", "outlook.office.com"]),
-        make("proton-mail", "Proton Mail", "https://mail.proton.me", hosts: ["mail.proton.me"], iconDomain: "proton.me"),
-        make("infomaniak-mail", "Infomaniak Mail", "https://mail.infomaniak.com", hosts: ["mail.infomaniak.com"],
+        make("outlook", "Outlook", "https://outlook.live.com/mail", hosts: ["outlook.live.com", "outlook.office.com"], category: "mail"),
+        make("proton-mail", "Proton Mail", "https://mail.proton.me", hosts: ["mail.proton.me"], category: "mail", iconDomain: "proton.me"),
+        make("infomaniak-mail", "Infomaniak Mail", "https://mail.infomaniak.com", hosts: ["mail.infomaniak.com"], category: "mail",
              iconDomain: "infomaniak.com", script: infomaniakScript),
     ]
 

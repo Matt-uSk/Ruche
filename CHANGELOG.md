@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+- “Add service” grid: services grouped by category (Messaging, Social, Mail, Productivity, Other) with a search field
+- Recipes: new optional `category` field
+- Shared Facebook links (and other non-login Facebook / Discord pages) now open in the default browser instead of a Ruche window
+
 ## 0.7.0
 
 First public release.
