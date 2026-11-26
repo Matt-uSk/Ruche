@@ -1,0 +1,15 @@
+name: Build
+
+# Vérifie que l'app universelle compile à chaque push sur main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (universal)
+        run: ./build.sh

@@ -1,9 +1,17 @@
 name: Release
 
-# Compile l'app universelle et publie une release à chaque tag vX.Y.Z.
+# Compile l'app universelle et publie une release :
+#  - à chaque tag vX.Y.Z poussé,
+#  - ou à la main : onglet Actions › Release › Run workflow (la version est lue dans Info.plist
+#    si le champ est laissé vide ; le tag vX.Y.Z est créé par la release).
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (vide = celle d'Info.plist)"
+        required: false
 
 permissions:
   contents: write
@@ -14,19 +22,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            V="${{ inputs.version }}"
+          else
+            V=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info.plist)
+          fi
+          echo "VERSION=${V#v}" >> "$GITHUB_ENV"
+          echo "TAG=v${V#v}" >> "$GITHUB_ENV"
+
       - name: Build (universal)
-        run: VERSION="${GITHUB_REF_NAME#v}" ./build.sh
+        run: ./build.sh
 
       - name: Package
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           cd build
           ditto -c -k --sequesterRsrc --keepParent Ruche.app "Ruche-${VERSION}.zip"
           shasum -a 256 "Ruche-${VERSION}.zip" | tee "Ruche-${VERSION}.zip.sha256"
 
       - name: Release notes
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           # Section du CHANGELOG correspondant à la version, sinon texte par défaut.
           awk -v v="## $VERSION" '$0 ~ "^## " { p = (index($0, v) == 1) ; next } p' CHANGELOG.md > notes.md || true
           [ -s notes.md ] || echo "Ruche $VERSION" > notes.md
@@ -44,7 +62,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$TAG" \
             "build/Ruche-${VERSION}.zip" "build/Ruche-${VERSION}.zip.sha256" \
-            --title "Ruche ${VERSION}" --notes-file notes.md
+            --target "$GITHUB_SHA" --title "Ruche ${VERSION}" --notes-file notes.md
