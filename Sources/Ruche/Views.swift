@@ -382,6 +382,7 @@ struct ServiceButton: View {
             Button("Descendre") { model.move(service.id, by: 1) }
             Divider()
             Button("Modifier…") { model.beginEdit(service) }
+            Button("Réinitialiser la session…") { model.confirmResetSession(service) }
             Button("Supprimer…", role: .destructive) { model.confirmDelete(service) }
         }
     }

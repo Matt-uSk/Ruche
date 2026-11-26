@@ -407,6 +407,9 @@ struct ServicesSettings: View {
                             Button("Supprimer…", role: .destructive) {
                                 if let s = model.service(id) { model.confirmDelete(s) }
                             }
+                            Button("Réinitialiser la session…") {
+                                if let s = model.service(id) { model.confirmResetSession(s) }
+                            }
                             Spacer()
                             Button("Annuler les modifications") { model.selectInSettings(id) }
                                 .disabled(!model.draftIsDirty)

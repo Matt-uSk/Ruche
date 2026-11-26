@@ -460,6 +460,29 @@ final class AppModel: NSObject, ObservableObject {
         save()
     }
 
+    /// Efface la session et les données locales d'un service (cookies, stockage), en gardant ses réglages.
+    func confirmResetSession(_ s: Service) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Réinitialiser la session de « \(s.name) » ?"
+        alert.informativeText = "Les cookies et données locales de ce service seront effacés : tu devras te reconnecter. Ses réglages sont conservés."
+        alert.addButton(withTitle: "Réinitialiser")
+        alert.addButton(withTitle: "Annuler")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let id = s.id
+        hibernate(id)
+        badges[id] = nil
+        updateDockBadge()
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            try? await WKWebsiteDataStore.remove(forIdentifier: id)
+            if self.selectedID == id || self.service(id)?.keepAwake == true {
+                self.ensureController(id)
+                self.updateVisibility()
+            }
+        }
+    }
+
     func confirmDelete(_ s: Service) {
         let alert = NSAlert()
         alert.alertStyle = .warning
