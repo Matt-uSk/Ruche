@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>fr</string>
+	<key>CFBundleExecutable</key><string>Ruche</string>
+	<key>CFBundleIdentifier</key><string>ch.mattusk.ruche</string>
+	<key>CFBundleName</key><string>Ruche</string>
+	<key>CFBundleDisplayName</key><string>Ruche</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>0.7.0</string>
+	<key>CFBundleVersion</key><string>25</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key><string>14.0</string>
+	<key>LSApplicationCategoryType</key><string>public.app-category.social-networking</string>
+	<key>NSHighResolutionCapable</key><true/>
+	<key>NSPrincipalClass</key><string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key><string>Pour les messages vocaux et les appels dans tes services.</string>
+	<key>NSCameraUsageDescription</key><string>Pour les appels vidéo dans tes services.</string>
+</dict>
+</plist>
