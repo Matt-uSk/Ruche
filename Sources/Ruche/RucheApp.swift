@@ -30,6 +30,7 @@ struct RucheApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppModel.shared.start()
+        Updater.shared.checkAutomaticallyIfNeeded()
         if UserDefaults.standard.bool(forKey: "startHidden") {
             // Laisse SwiftUI créer la fenêtre, puis masque l'app (un clic sur le Dock la réaffiche).
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { NSApp.hide(nil) }

@@ -38,6 +38,7 @@ Ruche est une alternative légère à Ferdium / Franz / Rambox : WhatsApp, Messe
 - **Zoom** par service, **réorganisation** par glisser-déposer, barre latérale redimensionnable (glisser son bord)
 - **Réglages à onglets** (Général, Apparence, Services, Notifications, Sécurité, Avancé) avec un éditeur de services en liste/détail
 - Liens externes ouverts dans ton **navigateur par défaut** (ou dans une fenêtre Ruche, au choix)
+- **Mise à jour intégrée** depuis les Releases GitHub (empreinte vérifiée, en un clic)
 - Ouverture à la session, démarrage masqué, **export / import** de la configuration (les sessions ne sont jamais exportées)
 - Raccourcis : ⌘1…⌘9 changer de service, ⌘R recharger, ⌘[ / ⌘] précédent/suivant, ⌘+ / ⌘- / ⌘0 zoom, ⇧⌘N ajouter un service
 

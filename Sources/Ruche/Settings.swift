@@ -277,6 +277,7 @@ struct GeneralSettings: View {
             Section("Barre des menus") {
                 Toggle("Afficher l'icône avec le total des non-lus", isOn: $showMenuBar)
             }
+            UpdatesSettingsSection(updater: Updater.shared)
             Section("Veille des services") {
                 Picker("Mettre en veille les services inactifs", selection: $minutes) {
                     Text("Jamais").tag(0)

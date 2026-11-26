@@ -39,6 +39,7 @@ Ruche (“beehive” in French) is a lightweight alternative to Ferdium / Franz 
 - Per-service **zoom**, drag-and-drop **reordering**, resizable sidebar (drag its edge)
 - **Tabbed settings** (General, Appearance, Services, Notifications, Security, Advanced) with a list/detail service editor
 - External links open in your **default browser** (or in a Ruche window, your choice)
+- **Built-in updater** from GitHub Releases (checksum-verified, one click)
 - Launch at login, start hidden, configuration **export / import** (sessions are never exported)
 - Shortcuts: ⌘1…⌘9 switch service, ⌘R reload, ⌘[ / ⌘] back/forward, ⌘+ / ⌘- / ⌘0 zoom, ⇧⌘N add a service
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0
+
+- Built-in updater: checks GitHub Releases (automatically once a day, or Ruche › Check for Updates…), shows what's new, then downloads, verifies (SHA-256 + app identifier), replaces and relaunches Ruche — administrator password only if needed. Stable or beta channel, “Skip this version”
+
 ## 0.7.1
 
 - “Add service” grid: services grouped by category (Messaging, Social, Mail, Productivity, Other) with a search field
