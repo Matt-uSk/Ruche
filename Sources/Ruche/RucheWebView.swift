@@ -75,17 +75,41 @@ final class RucheWebView: WKWebView {
             for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
             dt.items.add(new File([bytes], f.name, { type: f.type }));
           }
+          // WebKit ignore parfois « dataTransfer » dans le constructeur : on l'attache aussi à la main.
+          const make = (type, init, prop, value) => {
+            let ev;
+            try { ev = new DragEvent(type, init); } catch (e) { ev = new Event(type, init); }
+            if (!ev[prop]) { try { Object.defineProperty(ev, prop, { value: value }); } catch (e) {} }
+            return ev;
+          };
           const fire = (type) => {
             const el = document.elementFromPoint(x, y) || document.body;
-            el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, composed: true,
-                                                    dataTransfer: dt, clientX: x, clientY: y }));
+            const ev = make(type, { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y,
+                                    dataTransfer: dt }, "dataTransfer", dt);
+            el.dispatchEvent(ev);
+            return ev.defaultPrevented;
           };
           fire("dragenter");
           fire("dragover");
-          // La zone « Déposez les fichiers ici » apparaît après dragenter : on vise ce qui est sous le pointeur ensuite.
           await new Promise((r) => setTimeout(r, 150));
           fire("dragover");
-          fire("drop");
+          let ok = fire("drop");
+          if (!ok) {
+            // Plan B : un collage (⌘V) des fichiers dans la zone de saisie, que WhatsApp et Messenger acceptent.
+            const editors = Array.from(document.querySelectorAll('[contenteditable="true"]'));
+            const target = (document.activeElement && document.activeElement.isContentEditable)
+              ? document.activeElement : editors[editors.length - 1];
+            if (target) {
+              target.focus();
+              let paste;
+              try { paste = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }); }
+              catch (e) { paste = new Event("paste", { bubbles: true, cancelable: true }); }
+              if (!paste.clipboardData) { try { Object.defineProperty(paste, "clipboardData", { value: dt }); } catch (e) {} }
+              target.dispatchEvent(paste);
+              ok = paste.defaultPrevented;
+            }
+          }
+          try { window.webkit.messageHandlers.ruche.postMessage({ type: "dropResult", ok: ok }); } catch (e) {}
         })(\(jsonText), \(Double(x)), \(Double(y)));
         """
         evaluateJavaScript(script, completionHandler: nil)

@@ -92,6 +92,15 @@ final class ServiceController: NSObject {
 
     func handle(_ message: WKScriptMessage) {
         guard let body = message.body as? [String: Any] else { return }
+        if body["type"] as? String == "dropResult" {
+            if body["ok"] as? Bool != true {
+                let alert = NSAlert()
+                alert.messageText = "\(service.name) n'a pas accepté le fichier"
+                alert.informativeText = "Utilise plutôt le trombone de la conversation, ou copie le fichier dans le Finder (⌘C) puis colle-le (⌘V) dans le message."
+                alert.runModal()
+            }
+            return
+        }
         if body["type"] as? String == "badge" {
             let count = (body["count"] as? NSNumber)?.intValue ?? 0
             model?.setBadge(count, for: service.id)

@@ -161,13 +161,13 @@ enum RecipeLibrary {
 
     /// Masque la barre de défilement de la page entière (le compteur reste géré par le titre).
     private static let hideRootScrollbar = #"""
-    Ruche.injectCSS("html { scrollbar-width: none; } html::-webkit-scrollbar { display: none; }");
+    Ruche.injectCSS("html, body { overflow: hidden !important; scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }");
     """#
 
     /// Lit la base interne de WhatsApp Web : non-lus exacts, archivées exclues, sourdine à part.
     private static let whatsAppScript = #"""
     // Barre de défilement de la page entière (claire sur fond sombre) : masquée.
-    Ruche.injectCSS("html { scrollbar-width: none; } html::-webkit-scrollbar { display: none; }");
+    Ruche.injectCSS("html, body { overflow: hidden !important; scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }");
     let db = null;
     let opening = false;
     const openDB = () => {
