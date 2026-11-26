@@ -26,7 +26,7 @@ struct ContentView: View {
                 WebHost(host: model.hostView)
                 if model.services.isEmpty {
                     EmptyStateView()
-                } else if !model.launching, let id = model.selectedID, model.isAsleep(id) {
+                } else if let id = model.selectedID, model.isAsleep(id) {
                     AsleepView(id: id)
                 }
                 if let hud = model.zoomHUD {

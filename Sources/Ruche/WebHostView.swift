@@ -12,18 +12,16 @@ final class WebHostView: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) non utilisé") }
 
-    private var keyObserver: NSObjectProtocol?
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        DropLog.write("CONTENEUR déplacé vers " + DropLog.describeWindow(window))
-        if let keyObserver { NotificationCenter.default.removeObserver(keyObserver) }
-        keyObserver = nil
-        guard let window else { return }
-        keyObserver = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
-                                                             object: window, queue: .main) { _ in
-            MainActor.assumeIsolated { AppModel.shared.windowDidAppear() }
-        }
+    /// Place une page au-dessus de la pile sans la retirer de la fenêtre.
+    func bringToFront(_ view: NSView) {
+        guard view.superview === self, subviews.last !== view else { return }
+        sortSubviews({ a, b, context in
+            guard let context else { return .orderedSame }
+            let top = Unmanaged<NSView>.fromOpaque(context).takeUnretainedValue()
+            if a === top { return .orderedDescending }
+            if b === top { return .orderedAscending }
+            return .orderedSame
+        }, context: Unmanaged.passUnretained(view).toOpaque())
     }
 
     /// Vue web actuellement visible.

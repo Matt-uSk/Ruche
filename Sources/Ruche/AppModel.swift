@@ -62,13 +62,6 @@ final class AppModel: NSObject, ObservableObject {
     private var lastActive: [UUID: Date] = [:]
     private var timer: Timer?
     private var started = false
-    /// Vrai tant que les services du lancement ne sont pas encore créés.
-    @Published private(set) var launching = true
-    private var loadedWhileWindowHidden = false
-    /// Pages créées masquées : macOS ne les prend pas comme cibles de glisser-déposer, même une fois
-    /// affichées. Au premier affichage, on les retire puis on les remet dans la fenêtre
-    /// (sans recharger la page), ce qui refait leur enregistrement.
-    private var needsDropRefresh: Set<UUID> = []
 
     private let supportDir: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -107,10 +100,10 @@ final class AppModel: NSObject, ObservableObject {
             selectedID = services.first?.id
         }
         // Au lancement, on ne charge que le service affiché et ceux marqués « toujours actif ».
-        // Une page créée pendant que la fenêtre se met en place (avant qu'elle soit affichée à sa
-        // taille définitive) ne reçoit jamais les glisser-déposer : on attend que la fenêtre soit
-        // visible, plus un court délai.
-        waitForWindowThenLoad(attempt: 0)
+        for s in services where s.keepAwake || s.id == selectedID {
+            ensureController(s.id)
+        }
+        updateVisibility()
 
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -167,7 +160,6 @@ final class AppModel: NSObject, ObservableObject {
         c.webView.frame = hostView.bounds
         c.webView.autoresizingMask = [.width, .height]
         c.webView.isHidden = id != selectedID
-        if id != selectedID { needsDropRefresh.insert(id) }
         hostView.addSubview(c.webView)
         (c.webView as? RucheWebView)?.setDropTarget(id == selectedID)
         controllers[id] = c
@@ -183,6 +175,11 @@ final class AppModel: NSObject, ObservableObject {
             // Seule la page affichée doit recevoir les glisser-déposer : une page masquée
             // placée au-dessus dans la pile des vues les interceptait à sa place.
             (c.webView as? RucheWebView)?.setDropTarget(id == selectedID)
+        }
+        // macOS ne remet un glisser-déposer qu'à la page du dessus de la pile (même si celles
+        // du dessus sont masquées) : la page affichée doit donc toujours être la dernière.
+        if let id = selectedID, let wv = controllers[id]?.webView {
+            hostView.bringToFront(wv)
         }
         if let id = selectedID, let wv = controllers[id]?.webView {
             wv.window?.makeFirstResponder(wv)
@@ -200,58 +197,6 @@ final class AppModel: NSObject, ObservableObject {
         ensureController(id)
         updateVisibility()
         DropLog.dumpStack(of: hostView, reason: "après sélection")
-        needsDropRefresh.remove(id)
-    }
-
-    private func waitForWindowThenLoad(attempt: Int) {
-        guard launching else { return }
-        let window = hostView.window
-        let visible = window?.isVisible == true
-        if visible || attempt >= 25 { // 25 × 0,2 s = 5 s max (démarrage masqué)
-            DropLog.write("FENÊTRE \(DropLog.describeWindow(window)) après \(attempt) essais")
-            DispatchQueue.main.asyncAfter(deadline: .now() + (visible ? 1.0 : 0)) { [weak self] in
-                guard let self, self.launching else { return }
-                self.launching = false
-                self.loadedWhileWindowHidden = self.hostView.window?.isVisible != true
-                for s in self.services where s.keepAwake || s.id == self.selectedID {
-                    self.ensureController(s.id)
-                }
-                self.updateVisibility()
-            }
-        } else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                self?.waitForWindowThenLoad(attempt: attempt + 1)
-            }
-        }
-    }
-
-    /// Démarrage masqué : les pages ont été créées sans fenêtre visible. À la première apparition
-    /// de la fenêtre, on les remet en place pour qu'elles acceptent les glisser-déposer.
-    func windowDidAppear() {
-        guard loadedWhileWindowHidden else { return }
-        loadedWhileWindowHidden = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self else { return }
-            for id in Array(self.controllers.keys) { self.reinsertWebView(id) }
-        }
-    }
-
-    /// Retire la page de la fenêtre puis la remet au tour suivant, visible et au-dessus de la pile.
-    /// La page n'est pas rechargée ; au pire, un bref clignotement la première fois.
-    private func reinsertWebView(_ id: UUID) {
-        guard let webView = controllers[id]?.webView else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.controllers[id]?.webView === webView else { return }
-            webView.removeFromSuperview()
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.controllers[id]?.webView === webView else { return }
-                webView.frame = self.hostView.bounds
-                webView.isHidden = id != self.selectedID
-                self.hostView.addSubview(webView)
-                self.updateVisibility()
-                DropLog.dumpStack(of: self.hostView, reason: "après réinsertion de \(self.service(id)?.name ?? "?")")
-            }
-        }
     }
 
     func selectIndex(_ index: Int) {
@@ -262,7 +207,6 @@ final class AppModel: NSObject, ObservableObject {
     func hibernate(_ id: UUID) {
         guard let c = controllers.removeValue(forKey: id) else { return }
         DropLog.write("MISE EN VEILLE \(service(id)?.name ?? "?")")
-        needsDropRefresh.remove(id)
         c.tearDown()
         // Gmail : on mémorise tout de suite les mails présents, pour que chaque mail arrivé
         // pendant la veille déclenche une notification (sans doublon avec ceux déjà vus).
