@@ -55,7 +55,7 @@ final class AppModel: NSObject, ObservableObject {
     @Published var notificationStatus = "…"
 
     /// Vue unique qui contient toutes les vues web vivantes ; seule la sélectionnée est visible.
-    let hostView = NSView()
+    let hostView = WebHostView(frame: .zero)
     var openMainWindow: (() -> Void)?
 
     private var controllers: [UUID: ServiceController] = [:]
