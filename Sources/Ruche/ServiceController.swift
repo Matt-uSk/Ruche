@@ -23,12 +23,18 @@ final class ServiceController: NSObject {
     private var downloadDestinations: [ObjectIdentifier: URL] = [:]
 
     /// Hôtes de connexion autorisés à s'ouvrir dans l'app (OAuth, login).
+    /// Hôtes entièrement dédiés à la connexion : toujours gardés dans l'app.
     static let authHosts: Set<String> = [
         "accounts.google.com", "accounts.youtube.com",
-        "www.facebook.com", "facebook.com", "m.facebook.com",
-        "discord.com", "id.atlassian.com", "appleid.apple.com",
+        "id.atlassian.com", "appleid.apple.com",
         "login.microsoftonline.com", "login.live.com", "account.proton.me",
     ]
+    /// Sites généralistes qui servent aussi à se connecter ailleurs (« Se connecter avec Facebook ») :
+    /// gardés dans l'app seulement pour leurs pages de connexion, pas pour un lien partagé.
+    static let mixedAuthHosts: Set<String> = [
+        "www.facebook.com", "facebook.com", "m.facebook.com", "discord.com",
+    ]
+    private static let authPathHints = ["login", "oauth", "dialog", "checkpoint", "signin", "auth", "consent", "two_step"]
 
     init(service: Service, model: AppModel) {
         self.service = service
@@ -116,7 +122,7 @@ final class ServiceController: NSObject {
 
     func isInternal(_ url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return true }
-        return domainTail(host) == baseDomain || Self.authHosts.contains(host)
+        return domainTail(host) == baseDomain || Self.isAuthHost(url)
     }
 
     /// Déballe les redirections de suivi (google.com/url?q=…, l.messenger.com/l.php?u=…).
@@ -151,7 +157,12 @@ final class ServiceController: NSObject {
 
     static func isAuthHost(_ url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return false }
-        return authHosts.contains(host)
+        if authHosts.contains(host) { return true }
+        if mixedAuthHosts.contains(host) {
+            let path = url.path.lowercased()
+            return authPathHints.contains { path.contains($0) }
+        }
+        return false
     }
 }
 
