@@ -63,6 +63,9 @@ final class AppModel: NSObject, ObservableObject {
     private var timer: Timer?
     private var started = false
     private var initialLoadDone = false
+    /// Services créés masqués (« toujours actifs » au lancement, réveils périodiques) : WebKit ne les
+    /// enregistre pas comme cibles de glisser-déposer. On les recrée une fois, au premier affichage.
+    private var createdHidden: Set<UUID> = []
 
     private let supportDir: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -172,6 +175,7 @@ final class AppModel: NSObject, ObservableObject {
         c.webView.frame = hostView.bounds
         c.webView.autoresizingMask = [.width, .height]
         c.webView.isHidden = id != selectedID
+        if id != selectedID { createdHidden.insert(id) }
         hostView.addSubview(c.webView)
         controllers[id] = c
         live.insert(id)
@@ -193,6 +197,10 @@ final class AppModel: NSObject, ObservableObject {
         selectedID = id
         lastActive[id] = Date()
         UserDefaults.standard.set(id.uuidString, forKey: "selectedID")
+        if createdHidden.remove(id) != nil, controllers[id] != nil {
+            // Recréation (comme une mise en veille suivie d'un réveil) : la session est conservée.
+            hibernate(id)
+        }
         ensureController(id)
         updateVisibility()
     }
@@ -204,6 +212,7 @@ final class AppModel: NSObject, ObservableObject {
 
     func hibernate(_ id: UUID) {
         guard let c = controllers.removeValue(forKey: id) else { return }
+        createdHidden.remove(id)
         c.tearDown()
         // Gmail : on mémorise tout de suite les mails présents, pour que chaque mail arrivé
         // pendant la veille déclenche une notification (sans doublon avec ceux déjà vus).
