@@ -28,8 +28,10 @@ final class RucheWebView: WKWebView {
     private static let syntheticDropHosts = ["whatsapp.com", "messenger.com", "facebook.com"]
     private static let maxSyntheticBytes = 100 * 1024 * 1024
 
+    /// Le dépôt simulé n'est plus utilisé par défaut (il ne fonctionnait pas) ; réactivable pour test :
+    /// `defaults write ch.mattusk.ruche syntheticDrop -bool true`.
     private func usesSyntheticDrop(_ sender: NSDraggingInfo) -> Bool {
-        guard !Self.nativeDropEnabled, let host = url?.host?.lowercased(),
+        guard UserDefaults.standard.bool(forKey: "syntheticDrop"), let host = url?.host?.lowercased(),
               Self.syntheticDropHosts.contains(where: { host == $0 || host.hasSuffix("." + $0) }) else { return false }
         return !fileURLs(sender).isEmpty
     }
@@ -39,25 +41,66 @@ final class RucheWebView: WKWebView {
                                                options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
     }
 
+    // MARK: Diagnostic (dropDebug)
+
+    private var debugEnabled: Bool { UserDefaults.standard.bool(forKey: "dropDebug") }
+    private var lastLoggedUpdate: UInt?
+
+    private func debugLog(_ text: String) {
+        guard debugEnabled,
+              let data = try? JSONSerialization.data(withJSONObject: [text]),
+              let json = String(data: data, encoding: .utf8) else { return }
+        evaluateJavaScript("window.__rucheDropLog && window.__rucheDropLog(\(json)[0])", completionHandler: nil)
+    }
+
+    private func describe(_ sender: NSDraggingInfo) -> String {
+        let types = (sender.draggingPasteboard.types ?? []).map(\.rawValue).joined(separator: ",")
+        return "fichiers=\(fileURLs(sender).count) | masque source=\(sender.draggingSourceOperationMask.rawValue) | presse-papiers=[\(types.prefix(300))]"
+    }
+
+    // MARK: NSDraggingDestination
+
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        usesSyntheticDrop(sender) ? .copy : super.draggingEntered(sender)
+        lastLoggedUpdate = nil
+        if usesSyntheticDrop(sender) {
+            debugLog("AppKit draggingEntered → simulé | " + describe(sender))
+            return .copy
+        }
+        let op = super.draggingEntered(sender)
+        debugLog("AppKit draggingEntered → WebKit répond \(op.rawValue) | " + describe(sender))
+        return op
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        usesSyntheticDrop(sender) ? .copy : super.draggingUpdated(sender)
+        if usesSyntheticDrop(sender) { return .copy }
+        let op = super.draggingUpdated(sender)
+        if lastLoggedUpdate != op.rawValue {
+            lastLoggedUpdate = op.rawValue
+            debugLog("AppKit draggingUpdated → WebKit répond \(op.rawValue) (0 = refusé, 1 = copie)")
+        }
+        return op
     }
 
     override func draggingExited(_ sender: NSDraggingInfo?) {
+        debugLog("AppKit draggingExited")
         if let sender, usesSyntheticDrop(sender) { return }
         super.draggingExited(sender)
     }
 
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        usesSyntheticDrop(sender) ? true : super.prepareForDragOperation(sender)
+        if usesSyntheticDrop(sender) { return true }
+        let ok = super.prepareForDragOperation(sender)
+        debugLog("AppKit prepareForDragOperation → \(ok)")
+        return ok
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        guard usesSyntheticDrop(sender) else { return super.performDragOperation(sender) }
+        guard usesSyntheticDrop(sender) else {
+            let ok = super.performDragOperation(sender)
+            debugLog("AppKit performDragOperation → \(ok)")
+            return ok
+        }
+        debugLog("AppKit performDragOperation → simulé")
         let point = convert(sender.draggingLocation, from: nil)
         let y = isFlipped ? point.y : bounds.height - point.y
         let zoom = max(pageZoom, 0.1)

@@ -62,7 +62,7 @@ final class ServiceController: NSObject {
                                            forMainFrameOnly: true))
         }
         if UserDefaults.standard.bool(forKey: "dropDebug") {
-            ucc.addUserScript(WKUserScript(source: Scripts.dropDebug(nativeDrop: RucheWebView.nativeDropEnabled),
+            ucc.addUserScript(WKUserScript(source: Scripts.dropDebug,
                                            injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
         config.userContentController = ucc

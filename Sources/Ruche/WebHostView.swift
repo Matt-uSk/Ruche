@@ -18,7 +18,10 @@ final class WebHostView: NSView {
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        target?.draggingEntered(sender) ?? []
+        if UserDefaults.standard.bool(forKey: "dropDebug") {
+            target?.evaluateJavaScript("window.__rucheDropLog && window.__rucheDropLog('AppKit : le glisser arrive sur le CONTENEUR (pas directement sur la page)')", completionHandler: nil)
+        }
+        return target?.draggingEntered(sender) ?? []
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
