@@ -19,9 +19,8 @@ final class ServiceController: NSObject {
     let webView: WKWebView
     weak var model: AppModel?
 
-    private var popups: [NSWindow] = []
+    private var popups: [PopupCatcher] = []
     private var downloadDestinations: [ObjectIdentifier: URL] = [:]
-    private let popupKeyProvider = WebCryptoKeyProvider()
 
     /// Hôtes de connexion autorisés à s'ouvrir dans l'app (OAuth, login).
     private static let authHosts: Set<String> = [
@@ -115,13 +114,13 @@ final class ServiceController: NSObject {
         domainTail(URL(string: service.url)?.host ?? "")
     }
 
-    private func isInternal(_ url: URL) -> Bool {
+    func isInternal(_ url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return true }
         return domainTail(host) == baseDomain || Self.authHosts.contains(host)
     }
 
     /// Déballe les redirections de suivi (google.com/url?q=…, l.messenger.com/l.php?u=…).
-    private func unwrapRedirect(_ url: URL) -> URL? {
+    func unwrapRedirect(_ url: URL) -> URL? {
         guard ["/url", "/l.php"].contains(url.path),
               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
               let raw = items.first(where: { $0.name == "q" || $0.name == "u" || $0.name == "url" })?.value,
@@ -130,7 +129,7 @@ final class ServiceController: NSObject {
         return target
     }
 
-    private func openExternally(_ url: URL) {
+    func openExternally(_ url: URL) {
         NSWorkspace.shared.open(unwrapRedirect(url) ?? url)
     }
 }
@@ -215,29 +214,24 @@ extension ServiceController: WKUIDelegate {
             openExternally(url)
             return nil
         }
-        // Popup interne (connexion OAuth, fenêtre vide pilotée par JS) : petite fenêtre
-        // qui partage la session du service.
-        let popup = WKWebView(frame: NSRect(x: 0, y: 0, width: 520, height: 720), configuration: configuration)
-        popup.customUserAgent = AppModel.userAgent
-        popup.uiDelegate = self
-        popup.navigationDelegate = popupKeyProvider // clé WebCrypto aussi pour les fenêtres de connexion
-        let window = NSWindow(contentRect: popup.frame,
-                              styleMask: [.titled, .closable, .resizable],
-                              backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.title = service.name
-        window.contentView = popup
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        popups.append(window)
-        return popup
+        // Popup interne (connexion OAuth) ou fenêtre vide pilotée par JS (WhatsApp ouvre ses liens
+        // ainsi) : un « attrape-popup » invisible regarde où va la première navigation —
+        // site externe → navigateur par défaut ; connexion / même service → petite fenêtre.
+        let catcher = PopupCatcher(configuration: configuration, owner: self)
+        popups.append(catcher)
+        if let url = navigationAction.request.url, url.scheme?.hasPrefix("http") == true {
+            catcher.show() // déjà connue et interne (vérifié plus haut)
+        }
+        return catcher.webView
     }
 
-    func webViewDidClose(_ webView: WKWebView) {
-        if let i = popups.firstIndex(where: { $0.contentView === webView }) {
-            popups[i].close()
-            popups.remove(at: i)
-        }
+    /// Faut-il ouvrir cette adresse dans l'app (connexion, même service) plutôt que dans le navigateur ?
+    func shouldOpenInApp(_ url: URL) -> Bool {
+        unwrapRedirect(url) == nil && isInternal(url)
+    }
+
+    func dropPopup(_ catcher: PopupCatcher) {
+        popups.removeAll { $0 === catcher }
     }
 
     func webView(_ webView: WKWebView,
@@ -308,5 +302,73 @@ extension ServiceController: WKDownloadDelegate {
 
     func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
         downloadDestinations.removeValue(forKey: ObjectIdentifier(download))
+    }
+}
+
+
+/// Fenêtre popup ouverte par une page. Reste invisible tant qu'on ne sait pas où elle va :
+/// un lien externe part dans le navigateur par défaut, une page de connexion s'affiche.
+@MainActor
+final class PopupCatcher: NSObject, WKNavigationDelegate, WKUIDelegate {
+    let webView: WKWebView
+    weak var owner: ServiceController?
+    private var window: NSWindow?
+
+    init(configuration: WKWebViewConfiguration, owner: ServiceController) {
+        webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 520, height: 720), configuration: configuration)
+        self.owner = owner
+        super.init()
+        webView.customUserAgent = AppModel.userAgent
+        webView.navigationDelegate = self
+        webView.uiDelegate = self
+    }
+
+    func show() {
+        guard window == nil else { return }
+        let window = NSWindow(contentRect: webView.frame,
+                              styleMask: [.titled, .closable, .resizable],
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.title = owner?.service.name ?? "Ruche"
+        window.contentView = webView
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        self.window = window
+    }
+
+    func close() {
+        webView.stopLoading()
+        window?.close()
+        window = nil
+    }
+
+    func webView(_ webView: WKWebView,
+                 decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
+        guard let url = navigationAction.request.url,
+              let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return .allow }
+        guard window == nil, let owner else { return .allow }
+        if owner.shouldOpenInApp(url) {
+            show()
+            return .allow
+        }
+        owner.openExternally(url)
+        close()
+        owner.dropPopup(self)
+        return .cancel
+    }
+
+    func webViewDidClose(_ webView: WKWebView) {
+        close()
+        owner?.dropPopup(self)
+    }
+
+    @objc(_webCryptoMasterKeyForWebView:completionHandler:)
+    func webCryptoMasterKey(for webView: WKWebView, completionHandler: @escaping (NSData?) -> Void) {
+        completionHandler(WebCryptoKey.data as NSData)
+    }
+
+    @objc(_webCryptoMasterKeyForWebView:)
+    func webCryptoMasterKeyLegacy(for webView: WKWebView) -> NSData? {
+        WebCryptoKey.data as NSData
     }
 }
