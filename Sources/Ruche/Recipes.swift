@@ -159,15 +159,15 @@ enum RecipeLibrary {
              iconDomain: "infomaniak.com", script: infomaniakScript),
     ]
 
-    /// Masque la barre de défilement de la page entière (le compteur reste géré par le titre).
+    /// Barres de défilement fines et discrètes (le compteur reste géré par le titre).
     private static let hideRootScrollbar = #"""
-    Ruche.injectCSS("html, body { overflow: hidden !important; scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }");
+    Ruche.injectCSS(Ruche.darkScrollbarsCSS);
     """#
 
     /// Lit la base interne de WhatsApp Web : non-lus exacts, archivées exclues, sourdine à part.
     private static let whatsAppScript = #"""
-    // Barre de défilement de la page entière (claire sur fond sombre) : masquée.
-    Ruche.injectCSS("html, body { overflow: hidden !important; scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }");
+    // Barres de défilement fines et discrètes (comme le thème sombre de Ferdium).
+    Ruche.injectCSS(Ruche.darkScrollbarsCSS);
     let db = null;
     let opening = false;
     const openDB = () => {
@@ -243,6 +243,12 @@ extension Scripts {
           const n = parseInt(String(text == null ? "" : text).replace(/[^\d]/g, ""), 10);
           return isNaN(n) ? 0 : n;
         },
+        // Barres de défilement fines, grises et translucides (lisibles en clair comme en sombre).
+        darkScrollbarsCSS:
+          "*::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }" +
+          "*::-webkit-scrollbar-track { background: transparent; }" +
+          "*::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.45); border-radius: 4px; }" +
+          "*::-webkit-scrollbar-corner { background: transparent; }",
         injectCSS(css) {
           const style = document.createElement("style");
           style.textContent = css;

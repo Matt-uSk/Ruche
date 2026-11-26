@@ -44,6 +44,7 @@ final class ServiceController: NSObject {
         // Le cœur de l'isolation : un stockage (cookies, localStorage, IndexedDB…) par service.
         config.websiteDataStore = WKWebsiteDataStore(forIdentifier: service.id)
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
+        RucheWebView.enableDataTransferFeatures(config.preferences)
         config.mediaTypesRequiringUserActionForPlayback = []
         let ucc = WKUserContentController()
         ucc.addUserScript(WKUserScript(source: Scripts.notificationShim,

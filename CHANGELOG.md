@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.8.2
+## 0.8.3
 
 - Drag and drop files from the Finder into WhatsApp and Messenger (and any other service)
-- WhatsApp / Messenger: no more light page-level scrollbar on the right edge
+- WhatsApp / Messenger: thin, discreet scrollbars instead of light system ones
 
 ## 0.8.0
 

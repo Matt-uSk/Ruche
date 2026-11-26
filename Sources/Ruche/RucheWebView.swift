@@ -7,11 +7,29 @@ import WebKit
 /// ce que WebKit masque par sécurité) : Ruche reçoit alors elle-même les fichiers et les remet
 /// à la page sous forme d'un glisser-déposer JavaScript équivalent.
 final class RucheWebView: WKWebView {
+    /// Réglages internes de WebKit actifs dans Safari mais pas forcément dans une app :
+    /// sans eux, `DataTransfer.items` est absent et WhatsApp / Messenger ignorent les fichiers déposés.
+    /// Si ces réglages existent, on laisse WebKit gérer le dépôt normalement.
+    private(set) static var nativeDropEnabled = false
+
+    static func enableDataTransferFeatures(_ preferences: WKPreferences) {
+        var enabled = false
+        for key in ["dataTransferItemsEnabled", "customPasteboardDataEnabled"] {
+            let capitalized = key.prefix(1).uppercased() + String(key.dropFirst())
+            let setter = NSSelectorFromString("_set\(capitalized):")
+            if preferences.responds(to: setter) {
+                preferences.setValue(true, forKey: key)
+                if key == "dataTransferItemsEnabled" { enabled = true }
+            }
+        }
+        nativeDropEnabled = enabled
+    }
+
     private static let syntheticDropHosts = ["whatsapp.com", "messenger.com", "facebook.com"]
     private static let maxSyntheticBytes = 100 * 1024 * 1024
 
     private func usesSyntheticDrop(_ sender: NSDraggingInfo) -> Bool {
-        guard let host = url?.host?.lowercased(),
+        guard !Self.nativeDropEnabled, let host = url?.host?.lowercased(),
               Self.syntheticDropHosts.contains(where: { host == $0 || host.hasSuffix("." + $0) }) else { return false }
         return !fileURLs(sender).isEmpty
     }
