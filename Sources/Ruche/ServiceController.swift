@@ -23,7 +23,7 @@ final class ServiceController: NSObject {
     private var downloadDestinations: [ObjectIdentifier: URL] = [:]
 
     /// Hôtes de connexion autorisés à s'ouvrir dans l'app (OAuth, login).
-    private static let authHosts: Set<String> = [
+    static let authHosts: Set<String> = [
         "accounts.google.com", "accounts.youtube.com",
         "www.facebook.com", "facebook.com", "m.facebook.com",
         "discord.com", "id.atlassian.com", "appleid.apple.com",
@@ -129,8 +129,29 @@ final class ServiceController: NSObject {
         return target
     }
 
+    /// Ouvre un lien externe selon le réglage : navigateur par défaut (par défaut) ou fenêtre Ruche.
     func openExternally(_ url: URL) {
-        NSWorkspace.shared.open(unwrapRedirect(url) ?? url)
+        let target = unwrapRedirect(url) ?? url
+        if UserDefaults.standard.string(forKey: "externalLinks") == "ruche" {
+            openInRucheWindow(target)
+        } else {
+            NSWorkspace.shared.open(target)
+        }
+    }
+
+    /// Fenêtre Ruche pour un lien externe, avec la session du service.
+    func openInRucheWindow(_ url: URL) {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = webView.configuration.websiteDataStore
+        let catcher = PopupCatcher(configuration: config, owner: self, keepInApp: true)
+        popups.append(catcher)
+        catcher.show()
+        catcher.webView.load(URLRequest(url: url))
+    }
+
+    static func isAuthHost(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        return authHosts.contains(host)
     }
 }
 
@@ -219,9 +240,6 @@ extension ServiceController: WKUIDelegate {
         // site externe → navigateur par défaut ; connexion / même service → petite fenêtre.
         let catcher = PopupCatcher(configuration: configuration, owner: self)
         popups.append(catcher)
-        if let url = navigationAction.request.url, url.scheme?.hasPrefix("http") == true {
-            catcher.show() // déjà connue et interne (vérifié plus haut)
-        }
         return catcher.webView
     }
 
@@ -313,10 +331,19 @@ final class PopupCatcher: NSObject, WKNavigationDelegate, WKUIDelegate {
     let webView: WKWebView
     weak var owner: ServiceController?
     private var window: NSWindow?
+    /// Fenêtre ouverte volontairement pour un lien externe (réglage « fenêtre Ruche ») : on n'en sort pas.
+    private let keepInApp: Bool
+    /// Fenêtre de connexion (Google, Facebook…) : on la laisse naviguer librement.
+    private var isAuthFlow = false
+    /// Page du service : on n'affiche la fenêtre qu'une fois la page réellement chargée
+    /// (elle peut n'être qu'une redirection vers un site externe).
+    private var showWhenCommitted = false
 
-    init(configuration: WKWebViewConfiguration, owner: ServiceController) {
-        webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 520, height: 720), configuration: configuration)
+    init(configuration: WKWebViewConfiguration, owner: ServiceController, keepInApp: Bool = false) {
+        webView = WKWebView(frame: NSRect(x: 0, y: 0, width: keepInApp ? 1000 : 520, height: keepInApp ? 760 : 720),
+                            configuration: configuration)
         self.owner = owner
+        self.keepInApp = keepInApp
         super.init()
         webView.customUserAgent = AppModel.userAgent
         webView.navigationDelegate = self
@@ -344,17 +371,31 @@ final class PopupCatcher: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView,
                  decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
-        guard let url = navigationAction.request.url,
+        guard !keepInApp, let owner,
+              navigationAction.targetFrame?.isMainFrame != false,
+              let url = navigationAction.request.url,
               let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return .allow }
-        guard window == nil, let owner else { return .allow }
-        if owner.shouldOpenInApp(url) {
+        if ServiceController.isAuthHost(url) { isAuthFlow = true }
+        // Page de connexion : petite fenêtre tout de suite.
+        if isAuthFlow {
             show()
             return .allow
         }
-        owner.openExternally(url)
+        // Page du service lui-même : affichée seulement si elle se charge vraiment.
+        if owner.shouldOpenInApp(url) {
+            showWhenCommitted = true
+            return .allow
+        }
+        // Site externe — y compris après une page de redirection du service (WhatsApp passe
+        // d'abord par sa propre adresse) : on ferme la fenêtre et on ouvre le lien comme réglé.
         close()
         owner.dropPopup(self)
+        owner.openExternally(url)
         return .cancel
+    }
+
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        if showWhenCommitted { show() }
     }
 
     func webViewDidClose(_ webView: WKWebView) {

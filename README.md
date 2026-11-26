@@ -38,6 +38,7 @@ Ruche (“beehive” in French) is a lightweight alternative to Ferdium / Franz 
 - **Touch ID lock**: when the Mac locks, after inactivity, or instantly (padlock button, ⌃⌘L); message previews hidden while locked
 - Per-service **zoom**, drag-and-drop **reordering**, resizable sidebar (drag its edge)
 - **Tabbed settings** (General, Appearance, Services, Notifications, Security, Advanced) with a list/detail service editor
+- External links open in your **default browser** (or in a Ruche window, your choice)
 - Launch at login, start hidden, configuration **export / import** (sessions are never exported)
 - Shortcuts: ⌘1…⌘9 switch service, ⌘R reload, ⌘[ / ⌘] back/forward, ⌘+ / ⌘- / ⌘0 zoom, ⇧⌘N add a service
 

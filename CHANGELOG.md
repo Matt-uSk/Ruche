@@ -12,4 +12,6 @@ First public release.
 - Recipes: per-service unread counters (WhatsApp, Infomaniak Mail…) and shareable custom recipes
 - Touch ID lock (on Mac lock, after inactivity, or instantly), message previews hidden while locked
 - Per-service zoom, custom icon, colour tag, drag-and-drop reordering, resizable sidebar
+- External links open in the default browser (setting: or in a Ruche window); login pages stay in-app
+- Reset a service's session (keeps its settings); no Keychain prompt (Ruche provides WebKit's WebCrypto key)
 - Tabbed settings with a Services list/detail editor, launch at login, start hidden, configuration export/import (sessions are never exported)

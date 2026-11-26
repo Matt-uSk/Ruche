@@ -195,6 +195,7 @@ struct GeneralSettings: View {
     @AppStorage("startHidden") private var startHidden = false
     @AppStorage("showMenuBar") private var showMenuBar = false
     @AppStorage("hibernateMinutes") private var minutes = 10
+    @AppStorage("externalLinks") private var externalLinks = "browser"
 
     var body: some View {
         SettingsPage {
@@ -203,6 +204,13 @@ struct GeneralSettings: View {
                        isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
                 Toggle("Démarrer masquée", isOn: $startHidden)
                 Caption("Pour l'ouverture de session, place Ruche dans le dossier Applications.")
+            }
+            Section("Liens") {
+                Picker("Ouvrir les liens externes dans", selection: $externalLinks) {
+                    Text("Le navigateur par défaut").tag("browser")
+                    Text("Une fenêtre Ruche").tag("ruche")
+                }
+                Caption("Les pages de connexion (Google, Facebook…) et les pages du service lui-même restent toujours dans Ruche.")
             }
             Section("Barre des menus") {
                 Toggle("Afficher l'icône avec le total des non-lus", isOn: $showMenuBar)
