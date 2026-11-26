@@ -62,7 +62,7 @@ final class ServiceController: NSObject {
         }
         config.userContentController = ucc
 
-        webView = WKWebView(frame: .zero, configuration: config)
+        webView = RucheWebView(frame: .zero, configuration: config)
         super.init()
 
         ucc.add(WeakScriptHandler(self), name: "ruche")

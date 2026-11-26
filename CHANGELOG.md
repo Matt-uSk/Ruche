@@ -2,7 +2,8 @@
 
 ## 0.8.1
 
-- Drag and drop files, images, links or text into a service (e.g. a photo into a WhatsApp chat)
+- Drag and drop files from the Finder into WhatsApp and Messenger (and any other service)
+- WhatsApp / Messenger: no more light page-level scrollbar on the right edge
 
 ## 0.8.0
 

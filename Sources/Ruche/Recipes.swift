@@ -145,7 +145,8 @@ enum RecipeLibrary {
     static let builtIn: [Recipe] = [
         make("whatsapp", "WhatsApp", "https://web.whatsapp.com", hosts: ["web.whatsapp.com"], category: "messaging",
              keepAwake: true, iconDomain: "whatsapp.com", script: whatsAppScript),
-        make("messenger", "Messenger", "https://www.messenger.com", hosts: ["messenger.com"], category: "messaging", keepAwake: true),
+        make("messenger", "Messenger", "https://www.messenger.com", hosts: ["messenger.com"], category: "messaging",
+             keepAwake: true, script: hideRootScrollbar),
         make("discord", "Discord", "https://discord.com/app", hosts: ["discord.com"], category: "messaging"),
         make("gmail", "Gmail", "https://mail.google.com", hosts: ["mail.google.com"], category: "mail",
              iconURL: "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico"),
@@ -158,8 +159,15 @@ enum RecipeLibrary {
              iconDomain: "infomaniak.com", script: infomaniakScript),
     ]
 
+    /// Masque la barre de défilement de la page entière (le compteur reste géré par le titre).
+    private static let hideRootScrollbar = #"""
+    Ruche.injectCSS("html { scrollbar-width: none; } html::-webkit-scrollbar { display: none; }");
+    """#
+
     /// Lit la base interne de WhatsApp Web : non-lus exacts, archivées exclues, sourdine à part.
     private static let whatsAppScript = #"""
+    // Barre de défilement de la page entière (claire sur fond sombre) : masquée.
+    Ruche.injectCSS("html { scrollbar-width: none; } html::-webkit-scrollbar { display: none; }");
     let db = null;
     let opening = false;
     const openDB = () => {
