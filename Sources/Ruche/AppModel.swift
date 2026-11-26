@@ -62,6 +62,9 @@ final class AppModel: NSObject, ObservableObject {
     private var lastActive: [UUID: Date] = [:]
     private var timer: Timer?
     private var started = false
+    /// Vrai tant que les services du lancement ne sont pas encore créés.
+    @Published private(set) var launching = true
+    private var loadedWhileWindowHidden = false
     /// Pages créées masquées : macOS ne les prend pas comme cibles de glisser-déposer, même une fois
     /// affichées. Au premier affichage, on les retire puis on les remet dans la fenêtre
     /// (sans recharger la page), ce qui refait leur enregistrement.
@@ -104,10 +107,10 @@ final class AppModel: NSObject, ObservableObject {
             selectedID = services.first?.id
         }
         // Au lancement, on ne charge que le service affiché et ceux marqués « toujours actif ».
-        for s in services where s.keepAwake || s.id == selectedID {
-            ensureController(s.id)
-        }
-        updateVisibility()
+        // Une page créée pendant que la fenêtre se met en place (avant qu'elle soit affichée à sa
+        // taille définitive) ne reçoit jamais les glisser-déposer : on attend que la fenêtre soit
+        // visible, plus un court délai.
+        waitForWindowThenLoad(attempt: 0)
 
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -168,7 +171,7 @@ final class AppModel: NSObject, ObservableObject {
         hostView.addSubview(c.webView)
         (c.webView as? RucheWebView)?.setDropTarget(id == selectedID)
         controllers[id] = c
-        DropLog.write("CRÉATION \(s.name) | affichée=\(id == selectedID) | conteneur dans une fenêtre=\(hostView.window != nil) | taille conteneur=\(Int(hostView.bounds.width))x\(Int(hostView.bounds.height))")
+        DropLog.write("CRÉATION \(s.name) | affichée=\(id == selectedID) | taille conteneur=\(Int(hostView.bounds.width))x\(Int(hostView.bounds.height)) | \(DropLog.describeWindow(hostView.window))")
         live.insert(id)
         lastActive[id] = Date()
         return c
@@ -197,7 +200,40 @@ final class AppModel: NSObject, ObservableObject {
         ensureController(id)
         updateVisibility()
         DropLog.dumpStack(of: hostView, reason: "après sélection")
-        if needsDropRefresh.remove(id) != nil { reinsertWebView(id) }
+        needsDropRefresh.remove(id)
+    }
+
+    private func waitForWindowThenLoad(attempt: Int) {
+        guard launching else { return }
+        let window = hostView.window
+        let visible = window?.isVisible == true
+        if visible || attempt >= 25 { // 25 × 0,2 s = 5 s max (démarrage masqué)
+            DropLog.write("FENÊTRE \(DropLog.describeWindow(window)) après \(attempt) essais")
+            DispatchQueue.main.asyncAfter(deadline: .now() + (visible ? 1.0 : 0)) { [weak self] in
+                guard let self, self.launching else { return }
+                self.launching = false
+                self.loadedWhileWindowHidden = self.hostView.window?.isVisible != true
+                for s in self.services where s.keepAwake || s.id == self.selectedID {
+                    self.ensureController(s.id)
+                }
+                self.updateVisibility()
+            }
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                self?.waitForWindowThenLoad(attempt: attempt + 1)
+            }
+        }
+    }
+
+    /// Démarrage masqué : les pages ont été créées sans fenêtre visible. À la première apparition
+    /// de la fenêtre, on les remet en place pour qu'elles acceptent les glisser-déposer.
+    func windowDidAppear() {
+        guard loadedWhileWindowHidden else { return }
+        loadedWhileWindowHidden = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self else { return }
+            for id in Array(self.controllers.keys) { self.reinsertWebView(id) }
+        }
     }
 
     /// Retire la page de la fenêtre puis la remet au tour suivant, visible et au-dessus de la pile.

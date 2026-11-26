@@ -12,6 +12,20 @@ final class WebHostView: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) non utilisé") }
 
+    private var keyObserver: NSObjectProtocol?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        DropLog.write("CONTENEUR déplacé vers " + DropLog.describeWindow(window))
+        if let keyObserver { NotificationCenter.default.removeObserver(keyObserver) }
+        keyObserver = nil
+        guard let window else { return }
+        keyObserver = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
+                                                             object: window, queue: .main) { _ in
+            MainActor.assumeIsolated { AppModel.shared.windowDidAppear() }
+        }
+    }
+
     /// Vue web actuellement visible.
     private var target: WKWebView? {
         subviews.reversed().compactMap { $0 as? WKWebView }.first { !$0.isHidden }

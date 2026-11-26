@@ -27,10 +27,16 @@ enum DropLog {
         return "\(host) [masquée=\(view.isHidden) fenêtre=\(view.window != nil) taille=\(Int(view.frame.width))x\(Int(view.frame.height)) types=\(view.registeredDraggedTypes.count)]"
     }
 
+    static func describeWindow(_ window: NSWindow?) -> String {
+        guard let window else { return "fenêtre=aucune" }
+        let id = String(UInt(bitPattern: ObjectIdentifier(window).hashValue) % 100000)
+        return "fenêtre#\(id) visible=\(window.isVisible) active=\(window.isKeyWindow) \(Int(window.frame.width))x\(Int(window.frame.height))"
+    }
+
     /// État de la pile des pages (du dessous vers le dessus).
     static func dumpStack(of container: NSView?, reason: String) {
         guard enabled, let container else { return }
-        write("PILE (\(reason)) conteneur \(describe(container))")
+        write("PILE (\(reason)) conteneur \(describe(container)) | \(describeWindow(container.window))")
         for (i, v) in container.subviews.enumerated() {
             write("   \(i): \(describe(v))")
         }

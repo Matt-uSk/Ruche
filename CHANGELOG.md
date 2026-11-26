@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.12
+## 0.8.13
 
 - Drag and drop files from the Finder now works in every service, including the ones loaded at launch (WhatsApp, Messenger…)
 - WhatsApp / Messenger: scrollbars follow the dark theme
