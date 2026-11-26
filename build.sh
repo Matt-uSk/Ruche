@@ -14,14 +14,17 @@ if [ "${NATIVE:-0}" = "1" ]; then
     swift build -c release
     cp "$(swift build -c release --show-bin-path)/Ruche" "$APP/Contents/MacOS/Ruche"
 else
-    # Une compilation par architecture, puis fusion en binaire universel.
+    # Une compilation par architecture, copiée aussitôt (selon la version des outils Swift,
+    # les deux architectures peuvent sortir au même endroit), puis fusion en binaire universel.
+    TMP="build/arch"
+    mkdir -p "$TMP"
     for ARCH in arm64 x86_64; do
         swift build -c release --arch "$ARCH"
+        cp "$(swift build -c release --arch "$ARCH" --show-bin-path)/Ruche" "$TMP/Ruche-$ARCH"
+        echo "  $ARCH → $(lipo -archs "$TMP/Ruche-$ARCH")"
     done
-    lipo -create \
-        "$(swift build -c release --arch arm64 --show-bin-path)/Ruche" \
-        "$(swift build -c release --arch x86_64 --show-bin-path)/Ruche" \
-        -output "$APP/Contents/MacOS/Ruche"
+    lipo -create "$TMP/Ruche-arm64" "$TMP/Ruche-x86_64" -output "$APP/Contents/MacOS/Ruche"
+    rm -rf "$TMP"
 fi
 lipo -info "$APP/Contents/MacOS/Ruche"
 
