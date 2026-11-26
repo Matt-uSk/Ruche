@@ -474,8 +474,11 @@ final class AppModel: NSObject, ObservableObject {
         badges[id] = nil
         updateDockBadge()
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            try? await WKWebsiteDataStore.remove(forIdentifier: id)
+            // Vide le stockage en place (cookies, IndexedDB, caches…) : fonctionne même si WebKit
+            // garde encore le stockage ouvert, contrairement à sa suppression.
+            let store = WKWebsiteDataStore(forIdentifier: id)
+            await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+            try? await Task.sleep(nanoseconds: 500_000_000)
             if self.selectedID == id || self.service(id)?.keepAwake == true {
                 self.ensureController(id)
                 self.updateVisibility()
@@ -508,6 +511,8 @@ final class AppModel: NSObject, ObservableObject {
         if settingsSelection == id { selectInSettings(services.first?.id) }
         // Efface le stockage isolé une fois la vue web libérée.
         Task {
+            let store = WKWebsiteDataStore(forIdentifier: id)
+            await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             try? await WKWebsiteDataStore.remove(forIdentifier: id)
         }
