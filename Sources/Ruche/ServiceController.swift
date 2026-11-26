@@ -21,6 +21,7 @@ final class ServiceController: NSObject {
 
     private var popups: [NSWindow] = []
     private var downloadDestinations: [ObjectIdentifier: URL] = [:]
+    private let popupKeyProvider = WebCryptoKeyProvider()
 
     /// Hôtes de connexion autorisés à s'ouvrir dans l'app (OAuth, login).
     private static let authHosts: Set<String> = [
@@ -181,6 +182,20 @@ extension ServiceController: WKNavigationDelegate {
         webView.reload()
     }
 
+    // Clé maîtresse WebCrypto : par défaut, WebKit la range dans le trousseau, et macOS demande
+    // l'autorisation à chaque nouvelle signature de l'app (signature ad hoc = à chaque mise à jour).
+    // En fournissant la clé nous-mêmes (méthodes de délégué privées de WebKit, appelées si présentes),
+    // le trousseau n'est plus sollicité.
+    @objc(_webCryptoMasterKeyForWebView:completionHandler:)
+    func webCryptoMasterKey(for webView: WKWebView, completionHandler: @escaping (NSData?) -> Void) {
+        completionHandler(WebCryptoKey.data as NSData)
+    }
+
+    @objc(_webCryptoMasterKeyForWebView:)
+    func webCryptoMasterKeyLegacy(for webView: WKWebView) -> NSData? {
+        WebCryptoKey.data as NSData
+    }
+
     private func fetchIcon(_ url: URL) async {
         guard let (data, _) = try? await URLSession.shared.data(from: url),
               let image = NSImage(data: data), image.isValid else { return }
@@ -205,6 +220,7 @@ extension ServiceController: WKUIDelegate {
         let popup = WKWebView(frame: NSRect(x: 0, y: 0, width: 520, height: 720), configuration: configuration)
         popup.customUserAgent = AppModel.userAgent
         popup.uiDelegate = self
+        popup.navigationDelegate = popupKeyProvider // clé WebCrypto aussi pour les fenêtres de connexion
         let window = NSWindow(contentRect: popup.frame,
                               styleMask: [.titled, .closable, .resizable],
                               backing: .buffered, defer: false)
