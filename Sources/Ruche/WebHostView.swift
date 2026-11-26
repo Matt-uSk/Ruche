@@ -18,6 +18,8 @@ final class WebHostView: NSView {
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        DropLog.write("draggingEntered reçu par le CONTENEUR")
+        DropLog.dumpStack(of: self, reason: "conteneur")
         if UserDefaults.standard.bool(forKey: "dropDebug") {
             target?.evaluateJavaScript("window.__rucheDropLog && window.__rucheDropLog('AppKit : le glisser arrive sur le CONTENEUR (pas directement sur la page)')", completionHandler: nil)
         }

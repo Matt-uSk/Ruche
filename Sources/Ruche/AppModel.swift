@@ -82,6 +82,8 @@ final class AppModel: NSObject, ObservableObject {
         hostView.wantsLayer = true
         hostView.layer?.cornerRadius = Layout.contentRadius
         hostView.layer?.masksToBounds = true
+        try? FileManager.default.removeItem(at: DropLog.url)
+        DropLog.write("LANCEMENT Ruche \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") | macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
         recipes = RecipeLibrary.loadAll()
         load()
         let dnd = UserDefaults.standard.double(forKey: "dndUntil")
@@ -161,6 +163,7 @@ final class AppModel: NSObject, ObservableObject {
         hostView.addSubview(c.webView)
         (c.webView as? RucheWebView)?.setDropTarget(id == selectedID)
         controllers[id] = c
+        DropLog.write("CRÉATION \(s.name) | affichée=\(id == selectedID) | conteneur dans une fenêtre=\(hostView.window != nil) | taille conteneur=\(Int(hostView.bounds.width))x\(Int(hostView.bounds.height))")
         live.insert(id)
         lastActive[id] = Date()
         return c
@@ -179,6 +182,7 @@ final class AppModel: NSObject, ObservableObject {
     }
 
     func select(_ id: UUID) {
+        DropLog.write("SÉLECTION \(service(id)?.name ?? "?") | déjà chargée=\(controllers[id] != nil)")
         periodicUntil[id] = nil
         badgeBeforeWake[id] = nil
         if let prev = selectedID { lastActive[prev] = Date() }
@@ -196,6 +200,7 @@ final class AppModel: NSObject, ObservableObject {
 
     func hibernate(_ id: UUID) {
         guard let c = controllers.removeValue(forKey: id) else { return }
+        DropLog.write("MISE EN VEILLE \(service(id)?.name ?? "?")")
         c.tearDown()
         // Gmail : on mémorise tout de suite les mails présents, pour que chaque mail arrivé
         // pendant la veille déclenche une notification (sans doublon avec ceux déjà vus).

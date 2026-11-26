@@ -89,6 +89,8 @@ final class RucheWebView: WKWebView {
     // MARK: NSDraggingDestination
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        DropLog.write("draggingEntered reçu par " + DropLog.describe(self))
+        DropLog.dumpStack(of: superview, reason: "draggingEntered")
         if let other = visibleSibling {
             other.debugLog("AppKit : glisser remis à une page MASQUÉE (\(url?.host ?? "?")) → transmis à la page affichée")
             return other.draggingEntered(sender)
@@ -99,6 +101,7 @@ final class RucheWebView: WKWebView {
             return .copy
         }
         let op = super.draggingEntered(sender)
+        DropLog.write("   WebKit répond \(op.rawValue) (0 = refusé) | fichiers=\(fileURLs(sender).count)")
         debugLog("AppKit draggingEntered → WebKit répond \(op.rawValue) | " + describe(sender))
         return op
     }
@@ -130,6 +133,7 @@ final class RucheWebView: WKWebView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        DropLog.write("performDragOperation reçu par " + DropLog.describe(self))
         if let other = visibleSibling { return other.performDragOperation(sender) }
         guard usesSyntheticDrop(sender) else {
             let ok = super.performDragOperation(sender)
