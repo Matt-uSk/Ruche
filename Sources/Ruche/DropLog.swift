@@ -1,8 +1,8 @@
 import AppKit
 import WebKit
 
-/// Journal de diagnostic du glisser-déposer, écrit dans /tmp/ruche-drop.log
-/// quand `defaults write ch.mattusk.ruche dropDebug -bool true` est actif.
+/// Journal de diagnostic du glisser-déposer, désactivé par défaut. Pour l'activer :
+/// `defaults write ch.mattusk.ruche dropDebug -bool true`, relancer Ruche, puis lire /tmp/ruche-drop.log.
 enum DropLog {
     static let url = URL(fileURLWithPath: "/tmp/ruche-drop.log")
     static var enabled: Bool { UserDefaults.standard.bool(forKey: "dropDebug") }

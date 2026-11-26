@@ -1,9 +1,10 @@
 # Changelog
 
-## 0.8.14
+## 0.8.15
 
-- Drag and drop files from the Finder now works in every service, including the ones loaded at launch (WhatsApp, Messenger…)
+- Drag and drop files, images, links and text from the Finder into any service (WhatsApp, Messenger, Discord, Gmail…)
 - WhatsApp / Messenger: scrollbars follow the dark theme
+- build.sh: reliable universal build with recent Swift tools
 
 ## 0.8.0
 

@@ -37,6 +37,7 @@ Ruche est une alternative légère à Ferdium / Franz / Rambox : WhatsApp, Messe
 - **Verrouillage Touch ID** : au verrouillage du Mac, après inactivité ou immédiatement (cadenas, ⌃⌘L) ; contenu des notifications masqué tant que Ruche est verrouillée
 - **Zoom** par service, **réorganisation** par glisser-déposer, barre latérale redimensionnable (glisser son bord)
 - **Réglages à onglets** (Général, Apparence, Services, Notifications, Sécurité, Avancé) avec un éditeur de services en liste/détail
+- **Glisser-déposer** de fichiers depuis le Finder dans tes conversations
 - Liens externes ouverts dans ton **navigateur par défaut** (ou dans une fenêtre Ruche, au choix)
 - **Mise à jour intégrée** depuis les Releases GitHub (empreinte vérifiée, en un clic)
 - Ouverture à la session, démarrage masqué, **export / import** de la configuration (les sessions ne sont jamais exportées)

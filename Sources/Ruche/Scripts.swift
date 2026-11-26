@@ -133,43 +133,4 @@ enum Scripts {
       return best || (location.origin + "/favicon.ico");
     })();
     """#
-
-    /// Diagnostic du glisser-déposer (activé par `defaults write ch.mattusk.ruche dropDebug -bool true`) :
-    /// affiche ce que la page reçoit à chaque étape (lu pendant l'événement, pas après),
-    /// et ce qu'AppKit/WebKit décident côté app (lignes « AppKit »).
-    static let dropDebug = #"""
-    (function () {
-      if (window.__rucheDropLog) return;
-      const box = document.createElement("pre");
-      box.style.cssText = "position:fixed;top:4px;left:4px;z-index:2147483647;max-width:70vw;max-height:45vh;" +
-        "overflow:auto;margin:0;padding:6px 8px;background:rgba(0,0,0,.88);color:#7CFC00;" +
-        "font:11px/1.35 Menlo,monospace;border-radius:6px;pointer-events:none;white-space:pre-wrap";
-      box.textContent = "Ruche dropDebug v2 — " + location.host;
-      const show = () => { if (!box.isConnected) document.documentElement.appendChild(box); };
-      window.__rucheDropLog = (line) => { show(); box.textContent = line + "\n" + box.textContent.slice(0, 4000); };
-      const describe = (t, e) => {
-        const dt = e.dataTransfer;
-        let types = "pas de dataTransfer", items = "-", files = "-";
-        if (dt) {
-          try { types = Array.from(dt.types || []).join(","); } catch (x) { types = "erreur"; }
-          try { items = dt.items ? Array.from(dt.items).map((i) => i.kind + ":" + (i.type || "?")).join(",") || "0" : "absent"; } catch (x) { items = "erreur"; }
-          try { files = dt.files ? dt.files.length : "absent"; } catch (x) { files = "erreur"; }
-        }
-        const el = e.target;
-        const cible = el && el.tagName ? el.tagName.toLowerCase() +
-          (typeof el.className === "string" && el.className ? "." + el.className.split(" ")[0] : "") : "?";
-        return "page " + t + (e.isTrusted ? "" : " (simulé)") + " | types=[" + types + "] | items=" + items +
-          " | files=" + files + " | cible=" + cible;
-      };
-      let lastOver = 0;
-      for (const t of ["dragenter", "dragover", "dragleave", "drop"]) {
-        window.addEventListener(t, (e) => {
-          if (t === "dragover") { const now = Date.now(); if (now - lastOver < 700) return; lastOver = now; }
-          const line = describe(t, e); // lu tout de suite : après l'événement, WebKit vide le dataTransfer
-          setTimeout(() => window.__rucheDropLog(line + " | accepté par la page=" + e.defaultPrevented), 0);
-        }, true);
-      }
-      show();
-    })();
-    """#
 }
