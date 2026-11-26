@@ -1,53 +1,82 @@
-# Ruche
+<p align="center"><img src="docs/icon.png" width="128" alt="Ruche"></p>
 
-Petite alternative native à Ferdium : tes services web dans une barre latérale,
-sur WebKit (pas de Chromium), avec un stockage isolé par service.
+<h1 align="center">Ruche</h1>
 
-## Compiler
+<p align="center">
+  <b>Your web messengers and mailboxes in one native macOS window — without Chromium</b><br>
+  Native macOS app — Apple Silicon &amp; Intel, macOS 14+, zero dependencies
+</p>
 
-Prérequis : macOS 14+ et les Command Line Tools (ou Xcode).
+<p align="center">
+  <a href="https://github.com/Matt-uSk/Ruche/releases/latest"><img src="https://img.shields.io/github/v/release/Matt-uSk/Ruche?label=Release&color=2ea44f" alt="Release"></a>
+  <a href="https://github.com/Matt-uSk/Ruche/releases"><img src="https://img.shields.io/github/downloads/Matt-uSk/Ruche/total?label=Downloads&color=0a84ff" alt="Downloads"></a>
+  <a href="https://github.com/Matt-uSk/Ruche/stargazers"><img src="https://img.shields.io/github/stars/Matt-uSk/Ruche?label=Stars&color=f5a623&logo=github&logoColor=white" alt="Stars"></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/macOS-14%2B-8e8e93?logo=apple&logoColor=white" alt="macOS 14+"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Changelog-view-6f42c1" alt="Changelog"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0075ca" alt="MIT"></a>
+  <a href="https://ko-fi.com/mattusk"><img src="https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white" alt="Ko-fi"></a>
+</p>
+
+<p align="center">🇫🇷 <a href="README.fr.md">Version française</a></p>
+
+Ruche (“beehive” in French) is a lightweight alternative to Ferdium / Franz / Rambox: WhatsApp, Messenger, Discord, Gmail, Trello, Infomaniak Mail… side by side in a sidebar. Instead of one Chromium per service, Ruche uses **WebKit**, the engine already built into macOS. In our measurements against Ferdium with the same services: **about 4× less CPU and energy, half the memory**.
+
+## Origin and credits
+
+- **Inspired by [Ferdium](https://github.com/ferdium/ferdium-app)** (sidebar layout, recipes, hibernation). Ruche is a native Swift/SwiftUI rewrite; no Ferdium application code is reused.
+- The built-in WhatsApp and Infomaniak Mail recipes are adapted from **[Ferdium recipes](https://github.com/ferdium/ferdium-recipes)** (MIT, © Ferdium Contributors).
+- **Most of the code was written by [Claude](https://claude.ai) (Anthropic)**.
+
+## Features
+
+- **Isolated storage per service**: several accounts of the same service (e.g. 3 Gmail, 2 WhatsApp) side by side, with colour tags or custom icons
+- **Hibernation** of inactive services (delay of your choice), **Always on** per service, optional **periodic wake-up** per service to refresh unread counts
+- **Gmail while hibernated**: unread count and new-mail notifications every 2 min via the inbox feed — no page loaded, no password stored
+- **Native notifications**: click opens the right conversation, service icon attached, notifications and sound per service, **Do Not Disturb** (1 h, 3 h, until tomorrow…), **silent mode**
+- **Unread badges** in the sidebar, the Dock and an optional menu bar icon
+- **Recipes**: per-service unread counters (WhatsApp: exact count, archived chats excluded, muted chats as a dot) and **custom recipes** you can write and share — see [RECETTES.md](RECETTES.md)
+- **Touch ID lock**: when the Mac locks, after inactivity, or instantly (padlock button, ⌃⌘L); message previews hidden while locked
+- Per-service **zoom**, drag-and-drop **reordering**, resizable sidebar (drag its edge)
+- **Tabbed settings** (General, Appearance, Services, Notifications, Security, Advanced) with a list/detail service editor
+- Launch at login, start hidden, configuration **export / import** (sessions are never exported)
+- Shortcuts: ⌘1…⌘9 switch service, ⌘R reload, ⌘[ / ⌘] back/forward, ⌘+ / ⌘- / ⌘0 zoom, ⇧⌘N add a service
+
+## Installation
+
+Download the latest version from [Releases](https://github.com/Matt-uSk/Ruche/releases), unzip it and drag **Ruche.app** into `/Applications`.
+
+The app is ad-hoc signed (no Apple Developer ID), so macOS blocks it on first launch. Remove the quarantine flag once:
 
 ```bash
-./build.sh
-open build/Ruche.app
+xattr -dr com.apple.quarantine /Applications/Ruche.app
 ```
 
-### Signature stable (recommandé)
+Universal app (Apple Silicon and Intel), macOS 14 or later.
 
-Avec une signature ad hoc, chaque recompilation change l'identité de l'app : macOS
-redemande alors l'accès au trousseau (« Clé maîtresse WebCrypto ») et les autorisations.
-Pour l'éviter, crée une fois un certificat de signature local :
+## Build from source
 
-1. Trousseaux d'accès → menu Trousseaux d'accès → Assistant de certification →
-   Créer un certificat…
-2. Nom : `Ruche Local`, Type d'identité : Racine auto-signée, Type de certificat : Signature de code.
-3. Relance `./build.sh` : il l'utilisera automatiquement.
+Requires macOS 14+ and the Xcode Command Line Tools (or Xcode).
 
-## Fonctionnement
+```bash
+git clone https://github.com/Matt-uSk/Ruche.git
+cd Ruche
+./build.sh            # universal app in build/Ruche.app
+NATIVE=1 ./build.sh   # faster: your Mac's architecture only
+```
 
-- **Stockage isolé** : chaque service a ses propres cookies/session. Tu peux ajouter
-  plusieurs Gmail ou WhatsApp avec des comptes différents (pastille de couleur pour les distinguer).
-- **Veille automatique** : les services inactifs sont déchargés après le délai choisi
-  dans les Réglages (10 min par défaut). « Toujours actif » = jamais mis en veille.
-  Au lancement, seuls le service affiché et les « toujours actifs » sont chargés.
-- **Notifications** : relayées en notifications macOS ; un clic ouvre la conversation.
-  Pour Gmail, active les notifications de bureau dans les paramètres Gmail.
-- **Badges** : nombre de non-lus lu dans le titre de la page, total sur l'icône du Dock.
-- **Zoom par service** : menu Présentation, clic droit sur l’icône > Zoom, ou ⌘+ / ⌘- / ⌘0 (mémorisé par service).
-- **Raccourcis** : ⌘1…⌘9 pour changer de service, ⌘R recharger, ⌘[ / ⌘] précédent/suivant,
-  ⇧⌘N ajouter un service. Clic droit sur une icône : recharger, veille, ordre, modifier, supprimer.
-- **Barre latérale** : glisse son bord droit pour changer la taille des icônes (double-clic = taille par défaut).
-- **Ne pas déranger** : cloche en bas de la barre ; clic = activer/désactiver, clic droit = pour une durée.
-- **Réorganiser** : glisse une icône de service vers le haut ou le bas.
-- **Mode silencieux** : clic droit sur la cloche (ou menu Services) ; notifications sans son.
-- **Touch ID** : Réglages > Sécurité ; verrouillage quand le Mac se verrouille et/ou après inactivité ; bouton cadenas ou ⌃⌘L pour verrouiller tout de suite (même sans verrouillage auto).
-- **Gmail en veille** : relevé du flux de la boîte de réception toutes les 2 min (compteur + notification des nouveaux mails) sans charger la page.
-- **Par service** : icône personnalisée, notifications et son activables séparément (Modifier… ou clic droit).
-- **Réglages > Général** : ouverture de session, démarrage masqué, icône dans la barre des menus.
-- **Réglages > Configuration** : export / import des services (sans les sessions).
-- **Recettes** : compteurs adaptés par service (WhatsApp, Infomaniak…) et recettes perso partageables — voir RECETTES.md.
-- **Réveil périodique** (par service) : un service en veille se réveille ~1 min toutes les X min pour relever ses non-lus ; notification si le compteur augmente.
-- Fermer la fenêtre ne quitte pas l'app (⌘Q pour quitter).
+Optional: create a code-signing certificate named `Ruche Local` (Keychain Access › Certificate Assistant › Create a Certificate…, *Self-Signed Root*, *Code Signing*). `build.sh` uses it automatically, so macOS stops asking again for Keychain access and permissions after each rebuild.
 
-Données : `~/Library/Application Support/Ruche/` (liste des services et icônes).
-Supprimer un service efface aussi sa session.
+## Privacy
+
+- Everything stays on your Mac. Sessions (cookies) are kept by WebKit, isolated per service.
+- Gmail checks go directly to Google over HTTPS with the existing session; only message identifiers are kept, in memory, to avoid duplicate notifications.
+- Service icons in the “add service” grid come from Google's favicon service (it only sees which sites are listed).
+- Data: `~/Library/Application Support/Ruche/` (service list, icons, recipes).
+
+## Support
+
+Ruche is free and open source. If it saves your battery, you can [buy me a coffee on Ko-fi](https://ko-fi.com/mattusk) ☕
+
+## License
+
+[MIT](LICENSE)

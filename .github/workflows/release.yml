@@ -1,0 +1,50 @@
+name: Release
+
+# Compile l'app universelle et publie une release à chaque tag vX.Y.Z.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (universal)
+        run: VERSION="${GITHUB_REF_NAME#v}" ./build.sh
+
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent Ruche.app "Ruche-${VERSION}.zip"
+          shasum -a 256 "Ruche-${VERSION}.zip" | tee "Ruche-${VERSION}.zip.sha256"
+
+      - name: Release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Section du CHANGELOG correspondant à la version, sinon texte par défaut.
+          awk -v v="## $VERSION" '$0 ~ "^## " { p = (index($0, v) == 1) ; next } p' CHANGELOG.md > notes.md || true
+          [ -s notes.md ] || echo "Ruche $VERSION" > notes.md
+          cat >> notes.md <<'NOTES'
+
+          ---
+          **Installation** — unzip, move **Ruche.app** to `/Applications`, then (ad-hoc signed app):
+          ```bash
+          xattr -dr com.apple.quarantine /Applications/Ruche.app
+          ```
+          Universal (Apple Silicon & Intel), macOS 14+.
+          NOTES
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "build/Ruche-${VERSION}.zip" "build/Ruche-${VERSION}.zip.sha256" \
+            --title "Ruche ${VERSION}" --notes-file notes.md
