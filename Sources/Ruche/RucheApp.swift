@@ -50,6 +50,12 @@ struct RucheCommands: Commands {
     @ObservedObject var model: AppModel
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Rechercher des mises à jour…") {
+                Task { await Updater.shared.check(userInitiated: true) }
+            }
+        }
+
         // Menu Présentation
         CommandGroup(before: .toolbar) {
             Button("Zoom avant") { model.zoomSelected(by: 0.1) }
