@@ -162,6 +162,17 @@ struct ServiceForm: View {
             Toggle("Notifications", isOn: $model.draft.notifications)
             Toggle("Son des notifications", isOn: $model.draft.sound)
                 .disabled(!draft.notifications)
+            Picker("Son", selection: Binding(
+                get: { model.draft.soundName ?? "" },
+                set: { value in
+                    model.draft.soundName = value.isEmpty ? nil : value
+                    if !value.isEmpty { NotificationSounds.play(value) }
+                })) {
+                Text("Comme le réglage général").tag("")
+                Text(NotificationSounds.label(NotificationSounds.systemDefault)).tag(NotificationSounds.systemDefault)
+                ForEach(NotificationSounds.available, id: \.self) { Text($0).tag($0) }
+            }
+            .disabled(!draft.notifications || !draft.sound)
         }
     }
 }
@@ -325,6 +336,20 @@ struct NotificationSettings: View {
 
     var body: some View {
         SettingsPage {
+            Section("Son") {
+                Picker("Son des notifications", selection: Binding(
+                    get: { NotificationSounds.globalChoice },
+                    set: { value in
+                        UserDefaults.standard.set(value, forKey: "notificationSound")
+                        NotificationSounds.play(value)
+                        model.objectWillChange.send()
+                    })) {
+                    Text(NotificationSounds.label(NotificationSounds.systemDefault)).tag(NotificationSounds.systemDefault)
+                    ForEach(NotificationSounds.available, id: \.self) { Text($0).tag($0) }
+                }
+                Button("Écouter") { NotificationSounds.play(NotificationSounds.globalChoice) }
+                Caption("Chaque service peut avoir son propre son (onglet Services). Pour ajouter tes propres sons, place des fichiers .aiff, .caf ou .wav dans le dossier Sons de ta bibliothèque (~/Library/Sounds).")
+            }
             Section("Modes") {
                 Toggle("Mode silencieux (notifications sans son)", isOn: $model.silentMode)
                 Toggle("Ne pas déranger", isOn: Binding(get: { model.doNotDisturb },

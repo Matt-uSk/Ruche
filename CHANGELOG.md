@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0
+
+- Choose the notification sound (Settings › Notifications), with a per-service override; macOS sounds and your own sounds in ~/Library/Sounds
+
 ## 0.8.15
 
 - Drag and drop files, images, links and text from the Finder into any service (WhatsApp, Messenger, Discord, Gmail…)

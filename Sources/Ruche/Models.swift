@@ -48,6 +48,8 @@ struct Service: Identifiable, Codable, Hashable {
     var customIcon = false
     /// Réveil périodique quand le service est en veille (0 = jamais), pour relever les non-lus.
     var wakeEveryMinutes = 0
+    /// Son de notification propre au service (nil = réglage général).
+    var soundName: String? = nil
 
     var isGmail: Bool { URL(string: url)?.host?.lowercased() == "mail.google.com" }
 }
@@ -66,5 +68,6 @@ extension Service {
         sound = try c.decodeIfPresent(Bool.self, forKey: .sound) ?? true
         customIcon = try c.decodeIfPresent(Bool.self, forKey: .customIcon) ?? false
         wakeEveryMinutes = try c.decodeIfPresent(Int.self, forKey: .wakeEveryMinutes) ?? 0
+        soundName = try c.decodeIfPresent(String.self, forKey: .soundName)
     }
 }

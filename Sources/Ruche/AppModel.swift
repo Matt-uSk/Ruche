@@ -665,7 +665,15 @@ final class AppModel: NSObject, ObservableObject {
             content.subtitle = current.name
             content.body = body
         }
-        content.sound = (silentMode || !current.sound) ? nil : .default
+        let wantsSound = !silentMode && current.sound
+        let soundChoice = NotificationSounds.resolved(for: current)
+        if wantsSound && soundChoice == NotificationSounds.systemDefault {
+            content.sound = .default
+        } else {
+            content.sound = nil
+            // Son choisi : joué par Ruche (macOS ne joue que les sons de l'app ou son son par défaut).
+            if wantsSound { NotificationSounds.play(soundChoice) }
+        }
         content.userInfo = ["service": current.id.uuidString, "js": jsID]
         if let attachment = iconAttachment(for: current.id) {
             content.attachments = [attachment]
